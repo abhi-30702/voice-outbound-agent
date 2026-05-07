@@ -68,10 +68,12 @@ def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     # Override sqlalchemy.url with environment variable if present
     if os.getenv("DATABASE_URL"):
-        configuration["sqlalchemy.url"] = os.getenv("DATABASE_URL")
+        url = os.getenv("DATABASE_URL")
+        # Convert async driver (asyncpg) to sync driver (psycopg) for alembic
+        url = url.replace("postgresql+asyncpg://", "postgresql://")
+        configuration["sqlalchemy.url"] = url
 
-    # Use NullPool for alembic migrations with async engines
-    # QueuePool cannot be used with asyncio; NullPool is the correct choice for migrations
+    # Use NullPool for alembic migrations with synchronous engines
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
