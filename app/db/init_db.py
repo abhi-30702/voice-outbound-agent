@@ -19,8 +19,8 @@ async def create_tables() -> None:
     """
     engine = await get_engine()
     async with engine.begin() as conn:
-        # Create agent_operations schema if not exists
-        await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {AGENT_OPERATIONS_SCHEMA}"))
+        # AGENT_OPERATIONS_SCHEMA is a constant, not user input
+        await conn.execute(text("CREATE SCHEMA IF NOT EXISTS agent_operations"))
         # Create tables
         await conn.run_sync(Base.metadata.create_all)
 
