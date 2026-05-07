@@ -22,12 +22,12 @@ class ContactStatus(str, PyEnum):
 class Contact(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     """Lead/contact entity for outbound dialing."""
 
-    __tablename__ = "contacts"
+    __tablename__ = "leads"
     __table_args__ = (
-        Index("idx_contact_phone", "phone_number"),
-        Index("idx_contact_campaign", "campaign_id"),
-        Index("idx_contact_status", "status"),
-        Index("idx_contact_created", "created_at"),
+        Index("idx_lead_phone", "phone_number"),
+        Index("idx_lead_campaign", "campaign_id"),
+        Index("idx_lead_status", "status"),
+        Index("idx_lead_created", "created_at"),
         {"schema": "agent_operations"},
     )
 

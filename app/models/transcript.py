@@ -26,7 +26,7 @@ class Transcript(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     call_id: Mapped[UUID] = mapped_column(
-        ForeignKey("agent_operations.calls.id"),
+        ForeignKey("agent_operations.call_logs.id"),
         nullable=False,
         unique=True,
     )

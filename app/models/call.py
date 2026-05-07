@@ -20,16 +20,16 @@ class CallStatus(str, PyEnum):
 class Call(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     """Call log entity for tracking outbound calls."""
 
-    __tablename__ = "calls"
+    __tablename__ = "call_logs"
     __table_args__ = (
-        Index("idx_call_contact", "contact_id"),
-        Index("idx_call_status", "status"),
-        Index("idx_call_created", "created_at"),
+        Index("idx_call_log_lead", "lead_id"),
+        Index("idx_call_log_status", "status"),
+        Index("idx_call_log_created", "created_at"),
         {"schema": "agent_operations"},
     )
 
-    contact_id: Mapped[UUID] = mapped_column(
-        ForeignKey("agent_operations.contacts.id"),
+    lead_id: Mapped[UUID] = mapped_column(
+        ForeignKey("agent_operations.leads.id"),
         nullable=False,
     )
     retell_call_id: Mapped[str | None] = mapped_column(String(255))
