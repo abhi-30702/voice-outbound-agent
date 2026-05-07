@@ -80,3 +80,142 @@ class TestDatabaseConnectivity:
                 )
                 row = result.fetchone()
                 assert row is not None, f"Table {table_name} should exist"
+
+    async def test_memories_role_has_correct_grants(self, db_engine):
+        """Verify memories_role has SELECT/INSERT/UPDATE (no DELETE)."""
+        # Create role if doesn't exist (safe for test)
+        async with db_engine.connect() as conn:
+            await conn.execute(text("CREATE ROLE IF NOT EXISTS memories_role"))
+            await conn.commit()
+
+        # Query information_schema for role grants
+        async with db_engine.connect() as conn:
+            result = await conn.execute(
+                text("""
+                    SELECT privilege_type, table_name
+                    FROM information_schema.role_table_grants
+                    WHERE grantee = 'memories_role'
+                      AND table_schema = 'agent_operations'
+                    ORDER BY table_name, privilege_type
+                """)
+            )
+            grants = result.fetchall()
+
+        # Build a set of (table, privilege) tuples
+        grant_set = {(row[1], row[0]) for row in grants}
+
+        # Verify expected grants exist
+        expected_grants = {
+            ("campaigns", "SELECT"),
+            ("campaigns", "INSERT"),
+            ("campaigns", "UPDATE"),
+            ("leads", "SELECT"),
+            ("leads", "INSERT"),
+            ("leads", "UPDATE"),
+            ("call_logs", "SELECT"),
+            ("call_logs", "INSERT"),
+            ("call_logs", "UPDATE"),
+            ("call_transcripts", "SELECT"),
+            ("call_transcripts", "INSERT"),
+            ("dnc_registry", "SELECT"),
+        }
+
+        for expected in expected_grants:
+            assert expected in grant_set, f"Missing grant: {expected[1]} on {expected[0]}"
+
+        # Verify DELETE is NOT granted (security)
+        delete_grants = {(row[1], row[0]) for row in grants if row[0] == "DELETE"}
+        assert len(delete_grants) == 0, f"memories_role should NOT have DELETE privilege, found: {delete_grants}"
+
+    async def test_dnc_check_query_with_parameterized_sql(self, db_engine):
+        """Verify DNC check query works with parameterized SQL (NOT EXISTS pattern)."""
+        # Ensure schema and tables exist
+        await create_tables()
+
+        # Insert test data
+        async with db_engine.begin() as conn:
+            # Insert a DNC phone
+            await conn.execute(
+                text("""
+                    INSERT INTO agent_operations.dnc_registry
+                    (id, phone_number, source, added_at)
+                    VALUES (:id, :phone, :source, NOW())
+                """),
+                {
+                    "id": "550e8400-e29b-41d4-a716-446655440001",
+                    "phone": "+919876543210",
+                    "source": "manual",
+                }
+            )
+
+        # Test the parameterized DNC check query
+        async with db_engine.connect() as conn:
+            # Query: check if phone exists in DNC registry
+            dnc_check = text("""
+                SELECT EXISTS (
+                    SELECT 1 FROM agent_operations.dnc_registry
+                    WHERE phone_number = :phone_number
+                )
+            """)
+
+            # Test: phone in DNC should return True
+            result = await conn.execute(
+                dnc_check,
+                {"phone_number": "+919876543210"}
+            )
+            is_dnc = result.scalar()
+            assert is_dnc is True, "Phone should be found in DNC registry"
+
+            # Test: phone not in DNC should return False
+            result = await conn.execute(
+                dnc_check,
+                {"phone_number": "+919999999999"}
+            )
+            is_dnc = result.scalar()
+            assert is_dnc is False, "Phone should NOT be found in DNC registry"
+
+    async def test_seed_script_idempotency(self, db_engine):
+        """Verify seed script creates data once and is safe to rerun."""
+        from app.db.session import init_session_factory
+        from app.models import Campaign, Contact
+        from sqlalchemy import select, func
+
+        # Initialize for seeding
+        await init_session_factory()
+
+        # Run seed once
+        from scripts.seed_db import seed_db
+        await seed_db()
+
+        # Count initial records
+        async with db_engine.connect() as conn:
+            campaign_count = await conn.execute(
+                select(func.count()).select_from(Campaign)
+            )
+            campaign_count_1 = campaign_count.scalar()
+
+            contact_count = await conn.execute(
+                select(func.count()).select_from(Contact)
+            )
+            contact_count_1 = contact_count.scalar()
+
+        # Run seed again (should not create duplicates)
+        await seed_db()
+
+        # Count records again
+        async with db_engine.connect() as conn:
+            campaign_count = await conn.execute(
+                select(func.count()).select_from(Campaign)
+            )
+            campaign_count_2 = campaign_count.scalar()
+
+            contact_count = await conn.execute(
+                select(func.count()).select_from(Contact)
+            )
+            contact_count_2 = contact_count.scalar()
+
+        # Verify counts unchanged (idempotent)
+        assert campaign_count_1 == campaign_count_2, \
+            f"Campaign count changed after rerun: {campaign_count_1} -> {campaign_count_2}"
+        assert contact_count_1 == contact_count_2, \
+            f"Contact count changed after rerun: {contact_count_1} -> {contact_count_2}"
