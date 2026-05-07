@@ -70,10 +70,14 @@ def run_migrations_online() -> None:
     if os.getenv("DATABASE_URL"):
         configuration["sqlalchemy.url"] = os.getenv("DATABASE_URL")
 
+    # Use QueuePool for better connection reuse during migrations
+    # NullPool creates a new connection for each operation, causing churn
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
+        poolclass=pool.QueuePool,
+        pool_size=5,
+        max_overflow=10,
     )
 
     with connectable.connect() as connection:
