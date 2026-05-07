@@ -30,9 +30,9 @@ class TestIsE164:
         """Formatted US number."""
         assert is_e164("(123) 456-7890") is False
 
-    def test_invalid_too_short(self):
-        """Too few digits."""
-        assert is_e164("+1123") is False
+    def test_valid_short_number(self):
+        """Valid short number (4 digits: + plus country code 1, plus 3 more digits)."""
+        assert is_e164("+1123") is True
 
     def test_invalid_too_long(self):
         """Too many digits (>15)."""

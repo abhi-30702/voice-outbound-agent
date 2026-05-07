@@ -12,7 +12,7 @@ def is_e164(phone_number: str) -> bool:
     E.164 format:
     - Must start with +
     - First digit must be 1-9 (not 0)
-    - Must have 6-14 more digits (total 7-15 digits including the country code)
+    - Must have 1-14 more digits (total 2-15 digits including the country code)
 
     Args:
         phone_number: String to validate
@@ -20,5 +20,5 @@ def is_e164(phone_number: str) -> bool:
     Returns:
         True if valid E.164, False otherwise
     """
-    pattern = r"^\+[1-9]\d{6,14}$"
+    pattern = r"^\+[1-9]\d{1,14}$"
     return bool(re.match(pattern, phone_number))
