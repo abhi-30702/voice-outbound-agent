@@ -70,14 +70,12 @@ def run_migrations_online() -> None:
     if os.getenv("DATABASE_URL"):
         configuration["sqlalchemy.url"] = os.getenv("DATABASE_URL")
 
-    # Use QueuePool for better connection reuse during migrations
-    # NullPool creates a new connection for each operation, causing churn
+    # Use NullPool for alembic migrations with async engines
+    # QueuePool cannot be used with asyncio; NullPool is the correct choice for migrations
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
-        poolclass=pool.QueuePool,
-        pool_size=5,
-        max_overflow=10,
+        poolclass=pool.NullPool,
     )
 
     with connectable.connect() as connection:
