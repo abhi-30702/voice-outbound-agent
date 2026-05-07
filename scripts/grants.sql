@@ -3,7 +3,7 @@
 -- Apply AFTER migration 001_initial_schema.py
 
 -- Create role if not exists
-CREATE ROLE memories_role;
+CREATE ROLE IF NOT EXISTS memories_role;
 
 -- Grant schema usage
 GRANT USAGE ON SCHEMA agent_operations TO memories_role;

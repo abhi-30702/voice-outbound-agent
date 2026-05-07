@@ -72,11 +72,11 @@ class TestDatabaseConnectivity:
         async with db_engine.connect() as conn:
             for table_name in expected_tables:
                 result = await conn.execute(
-                    text(f"""
+                    text("""
                         SELECT 1 FROM information_schema.tables
                         WHERE table_schema = 'agent_operations'
-                        AND table_name = '{table_name}'
-                    """)
+                        AND table_name = :table_name
+                    """).bindparams(table_name=table_name)
                 )
                 row = result.fetchone()
                 assert row is not None, f"Table {table_name} should exist"
