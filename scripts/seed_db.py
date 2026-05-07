@@ -20,10 +20,10 @@ async def seed_db():
     # Create tables if they don't exist (safe to run multiple times)
     try:
         await create_tables()
-        print("✓ Schema and tables ensured")
+        print("[OK] Schema and tables ensured")
     except Exception as e:
         # Table may already exist; continue
-        print(f"✓ Schema/tables ready (or already exist): {e}")
+        print(f"[OK] Schema/tables ready (or already exist): {e}")
 
     async with session_factory() as session:
         # Check if test campaign already exists
@@ -51,10 +51,10 @@ async def seed_db():
             session.add(campaign)
             await session.flush()
             campaign_id = campaign.id
-            print(f"✓ Campaign created: {campaign_id}")
+            print(f"[OK] Campaign created: {campaign_id}")
         else:
             campaign_id = existing.id
-            print(f"✓ Campaign already exists: {campaign_id}")
+            print(f"[OK] Campaign already exists: {campaign_id}")
 
         # Check if DNC contact exists
         result = await session.execute(
@@ -74,9 +74,9 @@ async def seed_db():
             )
             session.add(dnc_contact)
             await session.flush()
-            print(f"✓ DNC contact created: +919876543210")
+            print(f"[OK] DNC contact created: +919876543210")
         else:
-            print(f"✓ DNC contact already exists: +919876543210")
+            print(f"[OK] DNC contact already exists: +919876543210")
 
         # Add to DNC registry
         result = await session.execute(
@@ -91,9 +91,9 @@ async def seed_db():
                 source=DNCSource.MANUAL,
             )
             session.add(dnc_entry)
-            print(f"✓ DNC registry entry created: +919876543210")
+            print(f"[OK] DNC registry entry created: +919876543210")
         else:
-            print(f"✓ DNC registry entry already exists: +919876543210")
+            print(f"[OK] DNC registry entry already exists: +919876543210")
 
         # Check if clean contact exists
         result = await session.execute(
@@ -112,15 +112,15 @@ async def seed_db():
                 status=ContactStatus.PENDING,
             )
             session.add(clean_contact)
-            print(f"✓ Clean contact created: +919876543211")
+            print(f"[OK] Clean contact created: +919876543211")
         else:
-            print(f"✓ Clean contact already exists: +919876543211")
+            print(f"[OK] Clean contact already exists: +919876543211")
 
         # Commit all changes
         await session.commit()
-        print("✓ All data committed")
+        print("[OK] All data committed")
 
 
 if __name__ == "__main__":
     asyncio.run(seed_db())
-    print("\n✓ Seed complete!")
+    print("\n[OK] Seed complete!")
