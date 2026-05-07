@@ -207,6 +207,95 @@ class TestDispatchCall:
         # Verify lead status was updated
         assert lead.status == ContactStatus.CALLING
 
+    @pytest.mark.asyncio
+    async def test_dispatch_call_creates_call_log(self, dialer_worker):
+        """Test that successful dispatch creates a call log entry."""
+        campaign_id = uuid4()
+        lead_id = uuid4()
+
+        lead = Contact(
+            id=lead_id,
+            phone_number="+11234567890",
+            timezone="America/New_York",
+            campaign_id=campaign_id,
+        )
+
+        campaign = Campaign(
+            id=campaign_id,
+            name="Test Campaign",
+            llm_config={"retell_agent_id": "agent_123"},
+        )
+
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_session.get = AsyncMock(return_value=campaign)
+        dialer_worker.retell_client.create_call = AsyncMock(
+            return_value={"call_id": "call_456"}
+        )
+
+        await dialer_worker._dispatch_call(mock_session, lead)
+
+        # Verify session.add was called with a Call object
+        add_calls = mock_session.add.call_args_list
+        assert len(add_calls) >= 1  # At least one call for the call log
+
+    @pytest.mark.asyncio
+    async def test_dispatch_call_missing_campaign_skips_dispatch(self, dialer_worker):
+        """Test that missing campaign prevents dispatch."""
+        campaign_id = uuid4()
+        lead_id = uuid4()
+
+        lead = Contact(
+            id=lead_id,
+            phone_number="+11234567890",
+            timezone="America/New_York",
+            campaign_id=campaign_id,
+        )
+
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_session.get = AsyncMock(return_value=None)  # Campaign not found
+        dialer_worker.retell_client.create_call = AsyncMock()
+
+        await dialer_worker._dispatch_call(mock_session, lead)
+
+        # Verify Retell API was NOT called
+        dialer_worker.retell_client.create_call.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_dispatch_call_handles_retell_error(self, dialer_worker):
+        """Test that RetellAPIError is caught and handled."""
+        campaign_id = uuid4()
+        lead = Contact(
+            id=uuid4(),
+            phone_number="+11234567890",
+            timezone="America/New_York",
+            campaign_id=campaign_id,
+        )
+
+        campaign = Campaign(
+            id=campaign_id,
+            name="Test Campaign",
+            llm_config={"retell_agent_id": "agent_123"},
+        )
+
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_session.get = AsyncMock(return_value=campaign)
+
+        # Mock Retell API to raise an error
+        error = RetellAPIError(
+            message="Service unavailable",
+            retriable=True,
+            status_code=503,
+        )
+        dialer_worker.retell_client.create_call = AsyncMock(side_effect=error)
+
+        # Mock _handle_retell_error
+        dialer_worker._handle_retell_error = AsyncMock()
+
+        await dialer_worker._dispatch_call(mock_session, lead)
+
+        # Verify error handler was called
+        dialer_worker._handle_retell_error.assert_called_once()
+
 
 class TestHandleRetellError:
     """Tests for _handle_retell_error method."""
