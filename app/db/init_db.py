@@ -1,7 +1,15 @@
+import logging
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import Base
 from app.db.session import get_engine
+
+
+logger = logging.getLogger(__name__)
+
+# Database schema name for all models
+AGENT_OPERATIONS_SCHEMA = "agent_operations"
 
 
 async def create_tables() -> None:
@@ -12,7 +20,7 @@ async def create_tables() -> None:
     engine = await get_engine()
     async with engine.begin() as conn:
         # Create agent_operations schema if not exists
-        await conn.execute(text("CREATE SCHEMA IF NOT EXISTS agent_operations"))
+        await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {AGENT_OPERATIONS_SCHEMA}"))
         # Create tables
         await conn.run_sync(Base.metadata.create_all)
 
@@ -27,8 +35,11 @@ async def check_db_connectivity() -> bool:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         return True
+    except (OperationalError, ProgrammingError) as e:
+        logger.warning(f"Database connectivity check failed: {e}")
+        return False
     except Exception as e:
-        print(f"Database connectivity check failed: {e}")
+        logger.error(f"Unexpected error during database connectivity check: {e}", exc_info=True)
         return False
 
 
@@ -45,8 +56,12 @@ async def check_migration_status() -> str | None:
             )
             row = result.fetchone()
             return row[0] if row else None
+    except (OperationalError, ProgrammingError) as e:
+        # Table doesn't exist (expected before first migration)
+        logger.debug(f"Alembic version table not found (expected before first migration): {e}")
+        return None
     except Exception as e:
-        print(f"Migration status check failed: {e}")
+        logger.error(f"Unexpected error checking migration status: {e}", exc_info=True)
         return None
 
 
