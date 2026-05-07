@@ -1,7 +1,8 @@
 """DNC Entry model for Do-Not-Call registry."""
 
 from datetime import datetime
-from sqlalchemy import String, Index, Enum
+from sqlalchemy import String, Index, DateTime, Enum
+from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column
 from enum import Enum as PyEnum
 from app.db.base import Base, UUIDPrimaryKeyMixin
@@ -32,6 +33,7 @@ class DNCEntry(Base, UUIDPrimaryKeyMixin):
     )
     source: Mapped[DNCSource | None] = mapped_column(Enum(DNCSource))
     added_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.utcnow(),
-        nullable=False,
+        DateTime(timezone=True),
+        default=func.now(),
+        nullable=False
     )

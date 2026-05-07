@@ -31,5 +31,13 @@ class Campaign(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         default=CampaignStatus.DRAFT,
         nullable=False,
     )
-    prompt_template: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    llm_config: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    prompt_template: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict
+    )
+    llm_config: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict
+    )
