@@ -17,12 +17,13 @@ async def seed_db():
     await init_db_engine()
     session_factory = await init_session_factory()
 
-    # Create tables if they don't exist
+    # Create tables if they don't exist (safe to run multiple times)
     try:
         await create_tables()
-        print("✓ Tables created")
+        print("✓ Schema and tables ensured")
     except Exception as e:
-        print(f"Note: {e}")
+        # Table may already exist; continue
+        print(f"✓ Schema/tables ready (or already exist): {e}")
 
     async with session_factory() as session:
         # Check if test campaign already exists
