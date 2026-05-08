@@ -5,18 +5,30 @@
 ## Stack
 Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telnyx SIP, ElevenLabs TTS, Silero VAD, Anthropic Claude Sonnet
 
-## Current Phase: 2 (COMPLETE - Ready for PR)
+## Current Phase: 5 (vad-pipeline) — NEXT
 
 ### Phase Status Summary
-**Phase 1 (db-schema):** COMPLETE - 11 commits, security fixes, test infra, docs
-**Phase 2 (dialing-worker):** COMPLETE - 14 tasks, 46 tests, 85% coverage, branch: dev (pushed to origin)
+**Phase 1 (db-schema):** COMPLETE - merged to master
+**Phase 2 (dialing-worker):** COMPLETE - merged to master
   - Spec: docs/superpowers/specs/2026-05-07-dialing-worker-design.md
   - Plan: docs/superpowers/plans/2026-05-07-dialing-worker-implementation.md
-  - Docs: app/dialing_worker/README.md (286 lines)
-  - PR: Ready - use GitHub UI or `gh pr create --base master --head dev`
+  - Docs: app/dialing_worker/README.md
 
-**Phase 3 (retell-integration):** NEXT - Webhook receiver, call status updates
-  - Start design phase next session after Phase 2 PR merged
+**Phase 3 (webhook-receiver):** COMPLETE - merged to master
+  - Spec: docs/superpowers/specs/2026-05-08-webhook-receiver-design.md
+  - Plan: docs/superpowers/plans/2026-05-08-webhook-receiver-implementation.md
+  - Docs: app/webhook_receiver/README.md
+
+**Phase 4 (post-call-analysis):** COMPLETE - merged to master
+  - Spec: docs/superpowers/specs/2026-05-08-post-call-analysis-design.md
+  - Plan: docs/superpowers/plans/2026-05-08-post-call-analysis-implementation.md
+  - Docs: app/post_call_analysis/README.md
+  - Key: analyze_call RQ job, Claude Sonnet tool use, DNC OR logic, dead-letter on retry exhaustion
+
+**Phase 5 (vad-pipeline):** NEXT - Silero VAD wrapper + QUIET/STARTING/SPEAKING/STOPPING state machine
+  - PRD Module 6 — see PRD.md §6 for VAD state machine spec
+  - Target dir: app/vad_pipeline/
+  - Start with brainstorming skill, then writing-plans, then subagent-driven-development
 
 ## PRD Reference
   Location: PRD.md (project root)
