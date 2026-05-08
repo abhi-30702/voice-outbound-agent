@@ -37,12 +37,20 @@ class Settings(BaseSettings):
         default=8001,
         description="Port for the webhook receiver FastAPI app"
     )
+    ANTHROPIC_API_KEY: str = Field(
+        default="",
+        description="Anthropic API key for Claude Sonnet post-call analysis — MUST be set in production"
+    )
 
     @model_validator(mode="after")
-    def warn_if_webhook_secret_empty(self) -> "Settings":
+    def warn_if_secrets_empty(self) -> "Settings":
         if not self.RETELL_WEBHOOK_SECRET:
             _logger.warning(
                 "RETELL_WEBHOOK_SECRET is not set — webhook signature verification will fail in production"
+            )
+        if not self.ANTHROPIC_API_KEY:
+            _logger.warning(
+                "ANTHROPIC_API_KEY is not set — post-call analysis will fail in production"
             )
         return self
 
