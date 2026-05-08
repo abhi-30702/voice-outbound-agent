@@ -148,6 +148,6 @@ def analyze_call(call_id: str) -> None:
         asyncio.run(_run_analysis(call_id))
     except Exception as exc:
         job = get_current_job()
-        if job is not None and getattr(job, "retries_left", 1) == 0:
+        if job is not None and getattr(job, "retries_left", 0) == 0:
             asyncio.run(_write_failure_flag(call_id, exc))
         raise

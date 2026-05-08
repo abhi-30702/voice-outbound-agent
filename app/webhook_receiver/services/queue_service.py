@@ -1,4 +1,3 @@
-# app/webhook_receiver/services/queue_service.py
 import asyncio
 import logging
 from uuid import UUID
