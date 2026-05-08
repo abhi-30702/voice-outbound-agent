@@ -4,7 +4,7 @@ import logging
 from uuid import UUID
 
 import redis as sync_redis
-from rq import Queue
+from rq import Queue, Retry
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,11 @@ def _enqueue_sync(redis_url: str, call_id: str) -> None:
     conn = sync_redis.from_url(redis_url)
     try:
         q = Queue(connection=conn)
-        q.enqueue(POST_CALL_ANALYSIS_JOB, call_id=call_id)
+        q.enqueue(
+            POST_CALL_ANALYSIS_JOB,
+            call_id=call_id,
+            retry=Retry(max=3, interval=[60, 120, 300]),
+        )
     finally:
         conn.close()
 
