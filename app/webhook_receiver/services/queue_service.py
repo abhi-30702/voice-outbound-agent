@@ -1,6 +1,7 @@
 # app/webhook_receiver/services/queue_service.py
 import asyncio
 import logging
+from uuid import UUID
 
 import redis as sync_redis
 from rq import Queue
@@ -16,9 +17,9 @@ def _enqueue_sync(redis_url: str, call_id: str) -> None:
     q.enqueue(POST_CALL_ANALYSIS_JOB, call_id=call_id)
 
 
-async def enqueue_analysis(redis_url: str, call_id: str) -> None:
+async def enqueue_analysis(redis_url: str, call_id: UUID) -> None:
     try:
-        await asyncio.to_thread(_enqueue_sync, redis_url, call_id)
+        await asyncio.to_thread(_enqueue_sync, redis_url, str(call_id))
         logger.info("Enqueued post_call_analysis job", extra={"call_id": call_id})
     except Exception as exc:
         logger.error(

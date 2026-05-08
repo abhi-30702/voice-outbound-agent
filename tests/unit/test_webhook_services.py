@@ -114,19 +114,20 @@ class TestCreateTranscript:
         added = session.add.call_args[0][0]
         assert added.call_id == call_id
         assert added.raw_transcript == "Agent: Hi\nUser: Hello"
+        assert added.structured_data is None
 
 
 class TestEnqueueAnalysis:
     @pytest.mark.asyncio
     async def test_enqueues_without_error(self):
-        call_id = str(uuid.uuid4())
+        call_id = uuid.uuid4()
         with patch("app.webhook_receiver.services.queue_service._enqueue_sync") as mock_enqueue:
             await enqueue_analysis("redis://localhost:6379", call_id)
-        mock_enqueue.assert_called_once_with("redis://localhost:6379", call_id)
+        mock_enqueue.assert_called_once_with("redis://localhost:6379", str(call_id))
 
     @pytest.mark.asyncio
     async def test_logs_error_on_redis_failure(self):
-        call_id = str(uuid.uuid4())
+        call_id = uuid.uuid4()
         with patch(
             "app.webhook_receiver.services.queue_service._enqueue_sync",
             side_effect=Exception("Redis down"),
