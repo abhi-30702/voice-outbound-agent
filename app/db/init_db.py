@@ -1,0 +1,80 @@
+import logging
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.base import Base
+from app.db.session import get_engine
+
+
+logger = logging.getLogger(__name__)
+
+# Database schema name for all models
+AGENT_OPERATIONS_SCHEMA = "agent_operations"
+
+
+async def create_tables() -> None:
+    """
+    Create all tables defined in models.
+    Run this on first app startup or in tests.
+    """
+    engine = await get_engine()
+    async with engine.begin() as conn:
+        # AGENT_OPERATIONS_SCHEMA is a constant, not user input
+        await conn.execute(text("CREATE SCHEMA IF NOT EXISTS agent_operations"))
+        # Create tables
+        await conn.run_sync(Base.metadata.create_all)
+
+
+async def check_db_connectivity() -> bool:
+    """
+    Check if database is reachable.
+    Returns True if connected, False otherwise.
+    """
+    try:
+        engine = await get_engine()
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return True
+    except (OperationalError, ProgrammingError) as e:
+        logger.warning(f"Database connectivity check failed: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error during database connectivity check: {e}", exc_info=True)
+        return False
+
+
+async def check_migration_status() -> str | None:
+    """
+    Check current Alembic migration version.
+    Returns version string or None if alembic_version table doesn't exist.
+    """
+    try:
+        engine = await get_engine()
+        async with engine.connect() as conn:
+            result = await conn.execute(
+                text("SELECT version_num FROM alembic_version ORDER BY installed_on DESC LIMIT 1")
+            )
+            row = result.fetchone()
+            return row[0] if row else None
+    except (OperationalError, ProgrammingError) as e:
+        # Table doesn't exist (expected before first migration)
+        logger.debug(f"Alembic version table not found (expected before first migration): {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error checking migration status: {e}", exc_info=True)
+        return None
+
+
+async def get_db_readiness_probe() -> dict:
+    """
+    Return readiness probe status for Kubernetes/Docker.
+    Useful for health endpoints: /health/db
+    """
+    connectivity = await check_db_connectivity()
+    migration_version = await check_migration_status()
+
+    return {
+        "status": "ready" if connectivity else "not_ready",
+        "connectivity": connectivity,
+        "migration_version": migration_version,
+    }

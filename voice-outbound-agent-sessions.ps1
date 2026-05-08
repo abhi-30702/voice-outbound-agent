@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # voice-outbound-agent-sessions.ps1
 # Session launcher for voice-outbound-agent.
 # Owner: Srinivas / Fidelitus Corp + SherpaVector
@@ -26,7 +26,7 @@ param(
     [string]$Session
 )
 
-$PROJECT_ROOT = "D:\staging\voice-outbound-agent"
+$PROJECT_ROOT = "D:\Projects\voice-outbound-agent"
 $HAIKU        = "claude-haiku-4-5-20251001"
 $SONNET       = "claude-sonnet-4-6"
 
