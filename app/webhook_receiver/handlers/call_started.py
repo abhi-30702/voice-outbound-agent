@@ -29,21 +29,30 @@ async def handle_call_started(
             try:
                 lead_id = uuid.UUID(raw_id)
             except ValueError:
-                logger.warning("Invalid lead_id in metadata", extra={"raw_lead_id": raw_id})
+                logger.warning(
+                    "Invalid lead_id in metadata — proceeding without lead_id",
+                    extra={"raw_lead_id": raw_id, "retell_call_id": retell_call_id},
+                )
 
-    async with session_factory() as session:
-        async with session.begin():
-            call = await call_log_service.upsert_call_log(
-                session=session,
-                retell_call_id=retell_call_id,
-                start_time=start_time,
-                lead_id=lead_id,
-            )
-            if call.lead_id:
+    try:
+        async with session_factory() as session:
+            async with session.begin():
+                call = await call_log_service.upsert_call_log(
+                    session=session,
+                    retell_call_id=retell_call_id,
+                    start_time=start_time,
+                    lead_id=lead_id,
+                )
                 await lead_service.set_lead_status(
                     session=session,
                     lead_id=call.lead_id,
                     status=ContactStatus.CALLING,
                 )
+    except ValueError as exc:
+        logger.warning(
+            "Cannot record call_started — no lead_id available",
+            extra={"retell_call_id": retell_call_id, "error": str(exc)},
+        )
+        return
 
     logger.info("Handled call_started", extra={"retell_call_id": retell_call_id})

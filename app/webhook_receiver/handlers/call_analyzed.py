@@ -40,10 +40,10 @@ async def handle_call_analyzed(
             )
             call_uuid = call.id
 
-    if call_uuid is not None:
-        await queue_service.enqueue_analysis(
-            redis_url=settings.REDIS_URL,
-            call_id=call_uuid,
-        )
-
-    logger.info("Handled call_analyzed", extra={"retell_call_id": retell_call_id})
+    # call_uuid is set inside the session block before we get here
+    # (early return handles the not-found case)
+    await queue_service.enqueue_analysis(
+        redis_url=settings.REDIS_URL,
+        call_id=call_uuid,
+    )
+    logger.info("Processed call_analyzed event", extra={"retell_call_id": retell_call_id})

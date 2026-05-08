@@ -26,11 +26,16 @@ async def handle_call_ended(
     if payload.duration_ms is not None:
         duration_sec = payload.duration_ms // 1000
 
-    lead_status = (
-        ContactStatus.FAILED
-        if payload.disconnect_reason in FAILED_DISCONNECT_REASONS
-        else ContactStatus.COMPLETED
-    )
+    if payload.disconnect_reason is None:
+        logger.warning(
+            "call_ended with no disconnect_reason — treating as completed",
+            extra={"retell_call_id": retell_call_id},
+        )
+        lead_status = ContactStatus.COMPLETED
+    elif payload.disconnect_reason in FAILED_DISCONNECT_REASONS:
+        lead_status = ContactStatus.FAILED
+    else:
+        lead_status = ContactStatus.COMPLETED
 
     async with session_factory() as session:
         async with session.begin():
@@ -51,5 +56,9 @@ async def handle_call_ended(
 
     logger.info(
         "Handled call_ended",
-        extra={"retell_call_id": retell_call_id, "disconnect_reason": payload.disconnect_reason},
+        extra={
+            "retell_call_id": retell_call_id,
+            "disconnect_reason": payload.disconnect_reason,
+            "lead_status": lead_status.value,
+        },
     )

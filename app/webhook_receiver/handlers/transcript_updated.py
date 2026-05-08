@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 async def handle_transcript_updated(payload: TranscriptUpdatedPayload) -> None:
-    logger.info(
+    logger.debug(
         "Received transcript_updated (no DB write — dashboard not yet built)",
         extra={"retell_call_id": payload.call_id},
     )
