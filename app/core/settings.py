@@ -22,6 +22,18 @@ class Settings(BaseSettings):
         default=20,
         description="SQLAlchemy max overflow connections"
     )
+    RETELL_WEBHOOK_SECRET: str = Field(
+        default="",
+        description="Retell AI webhook signing secret for HMAC-SHA256 verification"
+    )
+    REDIS_URL: str = Field(
+        default="redis://localhost:6379",
+        description="Redis connection URL for replay protection and RQ queue"
+    )
+    WEBHOOK_PORT: int = Field(
+        default=8001,
+        description="Port for the webhook receiver FastAPI app"
+    )
 
     class Config:
         env_file = ".env"
