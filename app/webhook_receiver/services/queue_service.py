@@ -13,16 +13,19 @@ POST_CALL_ANALYSIS_JOB = "app.post_call_analysis.worker.analyze_call"
 
 def _enqueue_sync(redis_url: str, call_id: str) -> None:
     conn = sync_redis.from_url(redis_url)
-    q = Queue(connection=conn)
-    q.enqueue(POST_CALL_ANALYSIS_JOB, call_id=call_id)
+    try:
+        q = Queue(connection=conn)
+        q.enqueue(POST_CALL_ANALYSIS_JOB, call_id=call_id)
+    finally:
+        conn.close()
 
 
 async def enqueue_analysis(redis_url: str, call_id: UUID) -> None:
     try:
         await asyncio.to_thread(_enqueue_sync, redis_url, str(call_id))
-        logger.info("Enqueued post_call_analysis job", extra={"call_id": call_id})
+        logger.info("enqueued post_call_analysis job", extra={"call_id": str(call_id)})
     except Exception as exc:
         logger.error(
-            "Failed to enqueue post_call_analysis job",
-            extra={"call_id": call_id, "error": str(exc)},
+            "failed to enqueue post_call_analysis job",
+            extra={"call_id": str(call_id), "error": str(exc)},
         )

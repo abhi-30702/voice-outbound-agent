@@ -99,15 +99,36 @@ class TestSetLeadStatus:
     @pytest.mark.asyncio
     async def test_executes_update(self):
         session = _make_mock_session()
+        result = MagicMock()
+        result.rowcount = 1
+        session.execute.return_value = result
         lead_id = uuid.uuid4()
         await set_lead_status(session, lead_id, ContactStatus.COMPLETED)
         session.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_warns_when_no_rows_matched(self):
+        session = _make_mock_session()
+        result = MagicMock()
+        result.rowcount = 0
+        session.execute.return_value = result
+        lead_id = uuid.uuid4()
+        with patch("app.webhook_receiver.services.lead_service.logger") as mock_logger:
+            await set_lead_status(session, lead_id, ContactStatus.COMPLETED)
+            mock_logger.warning.assert_called_once()
+            call_kwargs = mock_logger.warning.call_args
+            assert str(lead_id) in str(call_kwargs)
 
 
 class TestCreateTranscript:
     @pytest.mark.asyncio
     async def test_adds_transcript_to_session(self):
         session = _make_mock_session()
+        # SELECT returns nothing → new transcript created
+        select_result = MagicMock()
+        select_result.scalar_one_or_none.return_value = None
+        session.execute.return_value = select_result
+
         call_id = uuid.uuid4()
         result = await create_transcript(session, call_id, "Agent: Hi\nUser: Hello")
         session.add.assert_called_once()
@@ -115,6 +136,22 @@ class TestCreateTranscript:
         assert added.call_id == call_id
         assert added.raw_transcript == "Agent: Hi\nUser: Hello"
         assert added.structured_data is None
+
+    @pytest.mark.asyncio
+    async def test_updates_existing_transcript(self):
+        session = _make_mock_session()
+        existing = MagicMock(spec=Transcript)
+        existing.raw_transcript = "old"
+        existing.structured_data = None
+        select_result = MagicMock()
+        select_result.scalar_one_or_none.return_value = existing
+        session.execute.return_value = select_result
+
+        returned = await create_transcript(session, uuid.uuid4(), "new text")
+        assert returned is existing
+        assert existing.raw_transcript == "new text"
+        session.add.assert_not_called()
+        session.flush.assert_called_once()
 
 
 class TestEnqueueAnalysis:
