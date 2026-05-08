@@ -62,7 +62,9 @@
       "Bash(find D:\\\\\\\\Projects\\\\\\\\voice-outbound-agent\\\\\\\\app -name \"*.py\" -type f)",
       "Bash(grep -E \"\\\\.py$\")",
       "Bash(python3)",
-      "PowerShell(pip install *)"
+      "PowerShell(pip install *)",
+      "Bash(git push *)",
+      "Bash(gh pr *)"
     ]
   }
 }
