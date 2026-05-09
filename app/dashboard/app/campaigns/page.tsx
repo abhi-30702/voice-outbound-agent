@@ -1,8 +1,9 @@
 import CampaignTable from '@/components/CampaignTable'
 
 async function getCampaigns() {
+  const apiBase = process.env.API_INTERNAL_URL || 'http://localhost:8000'
   try {
-    const res = await fetch('http://localhost:8000/api/campaigns', { cache: 'no-store' })
+    const res = await fetch(`${apiBase}/api/campaigns`, { cache: 'no-store' })
     if (!res.ok) return []
     return res.json()
   } catch {

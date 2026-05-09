@@ -18,7 +18,8 @@ export default function LiveCallFeed() {
       })
       .catch(() => {})
 
-    const ws = new WebSocket('ws://localhost:8000/ws/calls')
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8000'
+    const ws = new WebSocket(`${wsUrl}/ws/calls`)
     ws.onmessage = (e: MessageEvent) => {
       const msg = JSON.parse(e.data as string) as {
         event: string

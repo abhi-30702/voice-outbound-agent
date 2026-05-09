@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -45,8 +45,11 @@ async def patch_campaign(
     body: CampaignStatusPatch,
     db: AsyncSession = Depends(get_db),
 ):
-    async with db.begin():
-        return await campaign_svc.patch_campaign_status(db, campaign_id, body)
+    try:
+        async with db.begin():
+            return await campaign_svc.patch_campaign_status(db, campaign_id, body)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 # --- Leads ---
@@ -57,6 +60,11 @@ async def get_leads(
     status: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    if status is not None:
+        from app.models.contact import ContactStatus
+        valid = {s.value for s in ContactStatus}
+        if status not in valid:
+            raise HTTPException(status_code=422, detail=f"Invalid status '{status}'. Valid values: {sorted(valid)}")
     return await lead_svc.list_leads(db, campaign_id, status)
 
 
@@ -67,8 +75,11 @@ async def post_leads_upload(
     db: AsyncSession = Depends(get_db),
 ):
     content = await file.read()
-    async with db.begin():
-        return await lead_svc.upload_leads(db, content, campaign_id)
+    try:
+        async with db.begin():
+            return await lead_svc.upload_leads(db, content, campaign_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @api_router.post("/leads/assign")
