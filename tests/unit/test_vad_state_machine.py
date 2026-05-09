@@ -117,3 +117,23 @@ def test_interrupted_false_after_agent_stops_speaking(machine):
     machine.set_agent_speaking(False)
     event = machine.process(0.9, 100.0)  # new onset
     assert event.interrupted is False
+
+
+def test_reset_returns_machine_to_quiet(machine):
+    _to_speaking(machine)
+    machine.reset()
+    assert machine.state == VADState.QUIET
+
+
+def test_reset_clears_agent_speaking_flag(machine):
+    machine.set_agent_speaking(True)
+    machine.reset()
+    event = machine.process(0.9, 0.0)
+    assert event.interrupted is False
+
+
+def test_no_event_in_stopping_hysteresis_zone(machine):
+    _to_stopping(machine)          # _offset_start_ms = 300
+    event = machine.process(0.4, 500.0)  # between 0.35 and 0.5, timer not expired
+    assert event is None
+    assert machine.state == VADState.STOPPING

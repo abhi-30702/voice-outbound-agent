@@ -13,6 +13,12 @@ class VADStateMachine:
     def state(self) -> VADState:
         return self._state
 
+    def reset(self) -> None:
+        self._state = VADState.QUIET
+        self._onset_start_ms = 0.0
+        self._offset_start_ms = 0.0
+        self._agent_speaking = False
+
     def set_agent_speaking(self, speaking: bool) -> None:
         self._agent_speaking = speaking
 

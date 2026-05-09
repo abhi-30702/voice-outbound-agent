@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from app.vad_pipeline.pipeline import VADPipeline
 from app.vad_pipeline.schemas import VADConfig, VADState
@@ -88,4 +88,20 @@ async def test_wrapper_reset_called_on_start(vad):
     pipeline, wrapper = vad
     await pipeline.start()
     wrapper.reset.assert_called_once()
+    await pipeline.stop()
+
+
+async def test_machine_reset_called_on_start(vad):
+    pipeline, wrapper = vad
+    with patch.object(pipeline._machine, "reset") as mock_reset:
+        await pipeline.start()
+        mock_reset.assert_called_once()
+        await pipeline.stop()
+
+
+async def test_double_start_raises(vad):
+    pipeline, _ = vad
+    await pipeline.start()
+    with pytest.raises(RuntimeError, match="already running"):
+        await pipeline.start()
     await pipeline.stop()

@@ -5,12 +5,13 @@ import torch
 from app.vad_pipeline.silero_wrapper import SileroWrapper
 
 
+def test_invalid_sample_rate_raises():
+    with pytest.raises(ValueError, match="8000 or 16000"):
+        SileroWrapper(target_sample_rate=44100)
+
+
 @pytest.mark.slow
 class TestSileroWrapper:
-    def test_invalid_sample_rate_raises(self):
-        with pytest.raises(ValueError, match="8000 or 16000"):
-            SileroWrapper(target_sample_rate=44100)
-
     def test_silent_audio_returns_low_probability(self):
         wrapper = SileroWrapper(target_sample_rate=16000)
         silent = bytes(512 * 2)  # 512 int16 zeros

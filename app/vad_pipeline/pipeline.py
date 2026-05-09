@@ -7,7 +7,8 @@ from app.vad_pipeline.state_machine import VADStateMachine
 
 
 class VADPipeline:
-    def __init__(self, config: VADConfig = VADConfig()) -> None:
+    def __init__(self, config: VADConfig | None = None) -> None:
+        config = config if config is not None else VADConfig()
         self._config = config
         self._wrapper = SileroWrapper(config.sample_rate)
         self._machine = VADStateMachine(config)
@@ -29,7 +30,10 @@ class VADPipeline:
         self._machine.set_agent_speaking(speaking)
 
     async def start(self) -> None:
+        if self._task is not None:
+            raise RuntimeError("VADPipeline.start() called while already running")
         self._wrapper.reset()
+        self._machine.reset()
         self._start_ms = time.monotonic() * 1000
         self._task = asyncio.create_task(self._run())
 
