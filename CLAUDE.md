@@ -5,7 +5,7 @@
 ## Stack
 Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telnyx SIP, ElevenLabs TTS, Silero VAD, Anthropic Claude Sonnet
 
-## Current Phase: 6 (conversation-prompts) — NEXT
+## Current Phase: 7 (dashboard) — NEXT
 
 ### Phase Status Summary
 **Phase 1 (db-schema):** COMPLETE - merged to master
@@ -31,9 +31,14 @@ Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telny
   - Docs: app/vad_pipeline/README.md
   - Key: layered arch (schemas→state_machine→silero_wrapper→pipeline), async queue interface, reset() on start(), interrupted flag
 
-**Phase 6 (conversation-prompts):** NEXT - system prompt library, persona templates, objection scripts
-  - PRD Module 7 — see PRD.md §7 for prompt design rules
-  - Target dir: app/conversation_prompts/
+**Phase 6 (conversation-prompts):** COMPLETE - merged to master
+  - Spec: docs/superpowers/specs/2026-05-09-conversation-prompts-design.md
+  - Plan: docs/superpowers/plans/2026-05-09-conversation-prompts-implementation.md
+  - Key: PromptTemplate JSONB dataclasses, PromptRenderer (lead var injection), ConstraintValidator (12-word/no-bullets/no-special-chars), 3 persona templates (real estate, recruitment, financial services), 31 tests
+
+**Phase 7 (dashboard):** NEXT - Next.js 14 live call monitoring, campaign manager, KPI charts
+  - PRD Module 8 — see PRD.md §8
+  - Target dir: app/dashboard/
   - Start with brainstorming skill, then writing-plans, then subagent-driven-development
 
 ## PRD Reference
