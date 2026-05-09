@@ -33,6 +33,7 @@ async def test_list_campaigns_empty():
 async def test_create_campaign_returns_draft():
     db = AsyncMock()
     db.flush = AsyncMock()
+    db.add = MagicMock()
     body = CampaignCreate(name="New Camp", prompt_template={"template_key": "real_estate"})
     result = await create_campaign(db, body)
     assert result.name == "New Camp"
