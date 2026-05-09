@@ -1,90 +1,95 @@
 # Next Session - Quick Start Guide
 
-## Current Status (as of 2026-05-08 EOD)
+## Current Status (as of 2026-05-09 EOD)
 
 ✅ **Module 1 (db-schema)**: Complete and merged to master
 ✅ **Module 2 (dialing-worker)**: Complete and merged to master
 ✅ **Module 3 (webhook-receiver)**: Complete and merged to master
 ✅ **Module 4 (post-call-analysis)**: Complete and merged to master
-⏳ **Module 5 (vad-pipeline)**: NEXT — not started
+✅ **Module 5 (vad-pipeline)**: Complete and merged to master
+⏳ **Module 6 (conversation-prompts)**: NEXT — not started
 
 ## Git State
 
 **Current Branch:** master (clean, up to date with origin/master)
-**Last merged commit covers:** Module 4 post-call analysis
-**dev branch:** still exists locally, same commits as master — safe to delete or reuse
+**Last commit:** e630e47 — fix: add state machine reset, double-start guard, and missing tests
+**Test status:** 147 unit tests passing (fast suite)
 
-## Immediate Action: Start Module 5 (vad-pipeline)
+## Immediate Action: Start Module 6 (conversation-prompts)
 
-Module 5 implements the Silero VAD wrapper and a 4-state state machine per PRD.md §6:
+Module 6 builds the system prompt library per PRD.md §7:
 
 ```
-QUIET ──(audio > threshold, sustained 200ms)──► STARTING
-STARTING ──(200ms confirmed)──────────────────► SPEAKING  → stream to STT
-SPEAKING ──(silence > 800ms)──────────────────► STOPPING  → signal LLM to respond
-STOPPING ──(LLM audio starts)─────────────────► QUIET
+Voice prompt rules (CRITICAL for naturalness):
+- Max sentence length: 12 words
+- No bullets, no lists, no special characters
+- Spell out acronyms phonetically (e.g. "GCC" → "Gee See See")
+- Include natural fillers: "umm", "got it", "let me check"
+- Each step waits for user confirmation before advancing
+- Agent role: junior operations assistant, NOT a sales closer
 
-Interrupt path:
-  SPEAKING (agent) ──(user audio detected)──► HALT TTS stream
-                                            ──► truncate LLM context to last word spoken
-                                            ──► STARTING (user)
+Prompt structure template:
+  PERSONA: Name, tone (friendly/professional/unhurried), pace
+  OBJECTIVE: Single sentence
+  FLOW: Steps 1-6 (greeting → purpose → wait → question → objection → close)
+  OBJECTIONS: busy, not interested, etc.
+  ESCAPE: anger/confusion → email offer → end politely
 ```
 
-**Implementation:** Silero VAD (PyTorch, open-source, MIT) via `silero-vad` Python package.
-**Target directory:** `app/vad_pipeline/`
+**Target directory:** `app/conversation_prompts/`
 
 **Start the session with:**
-1. Read PRD.md §6 (VAD State Machine) for requirements
+1. Read PRD.md §7 (Conversation Prompt Design) for requirements
 2. Invoke brainstorming skill to design the module
 3. Then writing-plans skill for the implementation plan
 4. Then subagent-driven-development to execute
 
-## What Was Built in Module 4 (post-call-analysis)
+## What Was Built in Module 5 (vad-pipeline)
 
 **Files created:**
-- `app/post_call_analysis/worker.py` — `analyze_call` RQ job, `_run_analysis`, `_call_claude`, `_write_failure_flag`
-- `app/post_call_analysis/schemas.py` — `ExtractionResult` Pydantic v2 (9 fields, Literal types)
-- `app/post_call_analysis/prompts.py` — `SYSTEM_PROMPT` + `build_user_message()`
-- `app/post_call_analysis/dnc_keywords.py` — `DNC_PHRASES` frozenset + `scan(transcript) -> bool`
-- `app/post_call_analysis/README.md`
+- `app/vad_pipeline/schemas.py` — VADState enum, VADEvent frozen dataclass, VADConfig dataclass
+- `app/vad_pipeline/state_machine.py` — Pure 4-state machine: QUIET/STARTING/SPEAKING/STOPPING, reset(), set_agent_speaking()
+- `app/vad_pipeline/silero_wrapper.py` — Silero model wrapper: PCM bytes → float prob, 8/16kHz resampling, zero-padding, reset_states()
+- `app/vad_pipeline/pipeline.py` — Async orchestrator: push_audio() / events queue / start() / stop()
+- `app/vad_pipeline/README.md` — Usage docs and state transition table
 
 **Files modified:**
-- `app/core/settings.py` — added `ANTHROPIC_API_KEY` field + startup warning
-- `app/webhook_receiver/services/queue_service.py` — added `Retry(max=3, interval=[60,120,300])`
+- `requirements.txt` — added silero-vad>=4.0.0, torchaudio>=2.0.0
 
-**Test counts:** 119 unit tests all passing (19 new for Module 4)
+**Test counts:** 147 unit tests passing (28 new for Module 5; 6 slow Silero model tests excluded from fast run)
 
-## Key Architecture Notes
+## Key Architecture Notes for Module 5
 
-**Cross-module dependency (dialing worker → webhook receiver):**
-The dialing worker MUST pass `metadata={"lead_id": str(lead.id)}` in the Retell `create_call` API call.
-The webhook receiver's `call_started` handler reads this to associate the call with a lead.
+**State machine transitions:**
+- QUIET → STARTING: first frame above onset_threshold (0.5)
+- STARTING → SPEAKING: sustained 200ms above threshold
+- STARTING → QUIET: false start (silence before 200ms)
+- SPEAKING → STOPPING: first frame below offset_threshold (0.35)
+- STOPPING → QUIET: sustained 800ms silence → signal LLM to respond
+- STOPPING → SPEAKING: speech resumes before 800ms
 
-**RQ job path (must remain exact):**
-`app.post_call_analysis.worker.analyze_call` — queue_service.py enqueues this exact string.
+**Hysteresis zone:** probs in [0.35, 0.5) in STOPPING hold position — no transition.
 
-**Claude integration:**
-- Model pinned: `CLAUDE_MODEL = "claude-sonnet-4-6"` in worker.py
-- Sync client: `anthropic.Anthropic` (not AsyncAnthropic) — RQ jobs are synchronous
-- Tool use forced via `tool_choice={"type": "any"}`
+**Interrupt detection:** `pipeline.set_agent_speaking(True)` → any QUIET→STARTING emits `VADEvent(interrupted=True)`. Caller halts TTS and truncates LLM context.
 
-**DNC logic:**
-- OR logic: `extraction.dnc_requested or scan(raw_transcript)` (belt-and-suspenders)
-- Dead-letter: `getattr(job, "retries_left", 0) == 0` before re-raising
+**Pipeline lifecycle:** `start()` calls `wrapper.reset()` then `machine.reset()` — both LSTM and state machine reset for each new call stream. Double-start guard raises RuntimeError.
 
-**Non-blocking follow-ups (tracked for future PR):**
-1. Redis replay check in webhook receiver is not atomic (exists + setex); fix with SET NX PX
-2. `call_analyzed` can arrive before `call_ended` — no ordering guarantee from Retell
+**Pipeline tests:** SileroWrapper is always mocked in fast tests — no model load. Run Silero tests separately with `python -m pytest tests/unit/test_vad_silero_wrapper.py -v -m slow`.
 
-## Test Command (verify everything still green)
+## Test Commands
 
+Fast tests (no model load, ~3s):
 ```powershell
-python -m pytest tests/unit/ -v --tb=short
+python -m pytest tests/unit/ --ignore=tests/unit/test_vad_silero_wrapper.py -v
 ```
-Expected: 119 passed
+
+All including slow Silero model tests (~30s first run):
+```powershell
+python -m pytest tests/unit/ -v
+```
 
 ## GitHub
 
 - Repo: https://github.com/abhi-30702/voice-outbound-agent
-- PR #1: merged (Modules 3 + 4)
+- Branch: master (all modules merged directly)
 - gh CLI not available — use GitHub API with curl + PAT for future PRs

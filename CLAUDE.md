@@ -5,7 +5,7 @@
 ## Stack
 Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telnyx SIP, ElevenLabs TTS, Silero VAD, Anthropic Claude Sonnet
 
-## Current Phase: 5 (vad-pipeline) — NEXT
+## Current Phase: 6 (conversation-prompts) — NEXT
 
 ### Phase Status Summary
 **Phase 1 (db-schema):** COMPLETE - merged to master
@@ -25,9 +25,15 @@ Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telny
   - Docs: app/post_call_analysis/README.md
   - Key: analyze_call RQ job, Claude Sonnet tool use, DNC OR logic, dead-letter on retry exhaustion
 
-**Phase 5 (vad-pipeline):** NEXT - Silero VAD wrapper + QUIET/STARTING/SPEAKING/STOPPING state machine
-  - PRD Module 6 — see PRD.md §6 for VAD state machine spec
-  - Target dir: app/vad_pipeline/
+**Phase 5 (vad-pipeline):** COMPLETE - merged to master
+  - Spec: docs/superpowers/specs/2026-05-09-vad-pipeline-design.md
+  - Plan: docs/superpowers/plans/2026-05-09-vad-pipeline-implementation.md
+  - Docs: app/vad_pipeline/README.md
+  - Key: layered arch (schemas→state_machine→silero_wrapper→pipeline), async queue interface, reset() on start(), interrupted flag
+
+**Phase 6 (conversation-prompts):** NEXT - system prompt library, persona templates, objection scripts
+  - PRD Module 7 — see PRD.md §7 for prompt design rules
+  - Target dir: app/conversation_prompts/
   - Start with brainstorming skill, then writing-plans, then subagent-driven-development
 
 ## PRD Reference
