@@ -41,6 +41,14 @@ class Settings(BaseSettings):
         default="",
         description="Anthropic API key for Claude Sonnet post-call analysis — MUST be set in production"
     )
+    N8N_WEBHOOK_URL: str = Field(
+        default="",
+        description="n8n webhook URL for post-call automation — empty string disables automation"
+    )
+    N8N_WEBHOOK_SECRET: str = Field(
+        default="",
+        description="Shared secret sent in X-Internal-Webhook-Secret header to n8n"
+    )
 
     @model_validator(mode="after")
     def warn_if_secrets_empty(self) -> "Settings":
