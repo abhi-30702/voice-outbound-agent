@@ -13,3 +13,5 @@ httpx==0.27.0
 rq==1.16.1
 anthropic>=0.25.0
 redis>=4.5.0
+silero-vad>=4.0.0
+torchaudio>=2.0.0
