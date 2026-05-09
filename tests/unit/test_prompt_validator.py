@@ -66,3 +66,22 @@ def test_constraint_error_fields():
     assert isinstance(err.rule, str)
     assert isinstance(err.excerpt, str)
     assert len(err.excerpt) > 0
+
+
+def test_double_asterisk_not_flagged_as_bullet():
+    validator = ConstraintValidator()
+    # **bold** should produce no_special_chars, NOT no_bullets
+    text = "**bold text here**"
+    errors = validator.check(text)
+    bullet_errors = [e for e in errors if e.rule == "no_bullets"]
+    assert len(bullet_errors) == 0  # must not be a false bullet
+
+
+def test_decimal_not_split_as_sentence():
+    validator = ConstraintValidator()
+    # "3.5" should not be treated as a sentence boundary
+    text = "The plan covers 3.5 lakh rupees per year."
+    errors = validator.check(text)
+    sentence_errors = [e for e in errors if e.rule == "sentence_length"]
+    # 8 words — well under 12, should pass
+    assert len(sentence_errors) == 0

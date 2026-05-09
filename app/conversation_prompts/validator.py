@@ -11,7 +11,7 @@ class ConstraintError:
 
 class ConstraintValidator:
     MAX_WORDS = 12
-    _BULLET = re.compile(r'^(?:[-*•]|\d+\.)')
+    _BULLET = re.compile(r'^(?:[-•]|\*\s|\d+\.)')
     _SPECIAL = re.compile(r'\[|\]|#|\*\*|__')
 
     def check(self, rendered: str) -> list[ConstraintError]:
@@ -24,7 +24,7 @@ class ConstraintValidator:
     def _check_sentence_length(self, text: str) -> list[ConstraintError]:
         errors: list[ConstraintError] = []
         for line in text.splitlines():
-            for sentence in re.split(r'[.!?]', line):
+            for sentence in re.split(r'(?<!\d)[.!?](?!\d)', line):
                 stripped = sentence.strip()
                 if not stripped:
                     continue
