@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 import anthropic
+import httpx
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from rq import get_current_job
@@ -75,6 +76,22 @@ async def _write_failure_flag(call_id_str: str, exc: Exception) -> None:
             "Failed to write dead-letter flag",
             extra={"call_id": call_id_str, "error": str(write_exc)},
         )
+
+
+async def _notify_n8n(payload: dict) -> None:
+    url = settings.N8N_WEBHOOK_URL
+    secret = settings.N8N_WEBHOOK_SECRET
+    if not url:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(
+                url,
+                json=payload,
+                headers={"X-Internal-Webhook-Secret": secret},
+            )
+    except Exception as exc:
+        logger.warning("n8n notify failed", extra={"error": str(exc)})
 
 
 async def _run_analysis(call_id_str: str) -> None:
