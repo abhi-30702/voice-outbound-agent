@@ -115,6 +115,9 @@ async def _run_analysis(call_id_str: str) -> None:
 
         lead_phone: str | None = None
         lead_id: uuid.UUID | None = None
+        lead_first_name: str | None = None
+        lead_last_name: str | None = None
+        lead_company: str | None = None
 
         if call is not None:
             lead_result = await session.execute(
@@ -124,6 +127,9 @@ async def _run_analysis(call_id_str: str) -> None:
             if lead is not None:
                 lead_phone = lead.phone_number
                 lead_id = lead.id
+                lead_first_name = lead.first_name
+                lead_last_name = lead.last_name
+                lead_company = lead.company
 
     raw = transcript.raw_transcript or ""
 
@@ -158,6 +164,22 @@ async def _run_analysis(call_id_str: str) -> None:
         "analyze_call complete",
         extra={"call_id": call_id_str, "dnc_requested": dnc_requested},
     )
+    await _notify_n8n({
+        "call_id": str(call_id),
+        "lead_id": str(lead_id) if lead_id else None,
+        "phone_number": lead_phone,
+        "first_name": lead_first_name,
+        "last_name": lead_last_name,
+        "company": lead_company,
+        "call_outcome": extraction.call_outcome,
+        "callback_requested": extraction.call_outcome == "callback_requested",
+        "callback_time": extraction.callback_time,
+        "summary": extraction.summary,
+        "lead_temperature": extraction.lead_temperature,
+        "sentiment": extraction.sentiment,
+        "objections_raised": extraction.objections_raised,
+        "next_action": extraction.next_action,
+    })
 
 
 def analyze_call(call_id: str) -> None:
