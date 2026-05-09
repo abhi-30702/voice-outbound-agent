@@ -7,89 +7,105 @@
 ✅ **Module 3 (webhook-receiver)**: Complete and merged to master
 ✅ **Module 4 (post-call-analysis)**: Complete and merged to master
 ✅ **Module 5 (vad-pipeline)**: Complete and merged to master
-⏳ **Module 6 (conversation-prompts)**: NEXT — not started
+✅ **Module 6 (conversation-prompts)**: Complete and merged to master
+🔁 **Module 7 (dashboard)**: COMPLETE — PR open, pending merge
+⏳ **Module 8 (n8n-flows)**: NEXT — not started
 
 ## Git State
 
-**Current Branch:** master (clean, up to date with origin/master)
-**Last commit:** e630e47 — fix: add state machine reset, double-start guard, and missing tests
-**Test status:** 147 unit tests passing (fast suite)
+**Active branch:** feature/module-7-dashboard (15 commits ahead of master)
+**PR:** https://github.com/abhi-30702/voice-outbound-agent/pull/new/feature/module-7-dashboard
+**master:** clean at f0451db
+**Test status:** 215 unit tests passing (1 pre-existing numpy skip in test_vad_silero_wrapper)
 
-## Immediate Action: Start Module 6 (conversation-prompts)
+## First Action Next Session
 
-Module 6 builds the system prompt library per PRD.md §7:
-
-```
-Voice prompt rules (CRITICAL for naturalness):
-- Max sentence length: 12 words
-- No bullets, no lists, no special characters
-- Spell out acronyms phonetically (e.g. "GCC" → "Gee See See")
-- Include natural fillers: "umm", "got it", "let me check"
-- Each step waits for user confirmation before advancing
-- Agent role: junior operations assistant, NOT a sales closer
-
-Prompt structure template:
-  PERSONA: Name, tone (friendly/professional/unhurried), pace
-  OBJECTIVE: Single sentence
-  FLOW: Steps 1-6 (greeting → purpose → wait → question → objection → close)
-  OBJECTIONS: busy, not interested, etc.
-  ESCAPE: anger/confusion → email offer → end politely
+**Step 1 — Merge the Module 7 PR.**
+If not yet merged, either merge via GitHub UI or run:
+```powershell
+git checkout master
+git pull
+git merge feature/module-7-dashboard
+git push
+git branch -d feature/module-7-dashboard
 ```
 
-**Target directory:** `app/conversation_prompts/`
+**Step 2 — Start Module 8 (n8n-flows).**
+Create a new feature branch and invoke the brainstorming skill.
+
+## What Was Built in Module 7 (dashboard)
+
+**Backend — `app/dashboard_api/`:**
+- `schemas.py` — 8 Pydantic v2 models (CampaignOut, CampaignCreate, CampaignStatusPatch, LeadOut, LeadUploadResult, LeadAssign, ActiveCall, KpiOut)
+- `websocket.py` — ConnectionManager (connect/disconnect/broadcast), module-level `broadcast()` coroutine imported by webhook handlers
+- `kpi.py` — `get_kpi(db, range_)` → KpiOut; supports today / 7d / 30d ranges
+- `campaigns.py` — list_campaigns (outerjoin for lead count), create_campaign, patch_campaign_status
+- `leads.py` — list_leads, upload_leads (CSV parse via csv.DictReader), assign_leads; parse_csv validates required columns {phone_number, timezone}
+- `router.py` — api_router (/api prefix) + ws_router; all ValueError → HTTPException (400/404/422)
+
+**Webhook integration:**
+- `app/webhook_receiver/handlers/call_started.py` — broadcasts `call_started` event after DB write
+- `app/webhook_receiver/handlers/transcript_updated.py` — broadcasts `transcript_updated` event
+- `app/webhook_receiver/handlers/call_ended.py` — broadcasts `call_ended` event
+- `app/webhook_receiver/main.py` — mounts api_router and ws_router
+
+**Frontend — `app/dashboard/` (Next.js 14 App Router):**
+- `/` → LiveCallFeed (WebSocket) + CallCard list
+- `/campaigns` → CampaignTable (PATCH actions) + CreateCampaignModal + LeadUpload
+- `/kpi` → KpiChart (Recharts AreaChart, SWR 30s polling) + RangeSelector
+- Styling: Tailwind CSS only
+
+**Docker:**
+- `app/dashboard/Dockerfile.dashboard` — 3-stage node:20-alpine (deps → builder → runner), output: standalone
+- `docker-compose.yml` — dashboard service on port 3000; API_INTERNAL_URL=http://api:8000 (server-side), NEXT_PUBLIC_WS_URL=ws://localhost:8000 (browser)
+
+**Tests (31 new, 215 total):**
+- `tests/unit/test_dashboard_schemas.py` — 7 tests
+- `tests/unit/test_dashboard_websocket.py` — 6 tests
+- `tests/unit/test_dashboard_kpi.py` — 5 tests
+- `tests/unit/test_dashboard_campaigns.py` — 5 tests
+- `tests/unit/test_dashboard_leads.py` — 9 tests
+
+**Known minor issues (non-blocking):**
+- `PATCH /campaigns/{id}/status` always returns `lead_count=0` (frontend ignores it)
+- `GET /api/calls/active` does not include `phone_number` (CallCard falls back to call_id display)
+
+## Module 8 (n8n-flows) — What to Build
+
+Per PRD.md §4, Module 9 (our Phase 8): post-call automation flows in n8n.
+
+Key flows to design:
+- CRM push (update contact record after call ends)
+- SMS follow-up (send confirmation SMS via Telnyx)
+- Calendar booking (book a slot after successful qualification)
+
+Target directory: `n8n-flows/` (exported n8n JSON files)
+Entry point: n8n webhook trigger on call_ended event from webhook receiver
 
 **Start the session with:**
-1. Read PRD.md §7 (Conversation Prompt Design) for requirements
-2. Invoke brainstorming skill to design the module
+1. Read PRD.md §4 module table and any n8n-related sections
+2. Invoke brainstorming skill to design the flows
 3. Then writing-plans skill for the implementation plan
 4. Then subagent-driven-development to execute
-
-## What Was Built in Module 5 (vad-pipeline)
-
-**Files created:**
-- `app/vad_pipeline/schemas.py` — VADState enum, VADEvent frozen dataclass, VADConfig dataclass
-- `app/vad_pipeline/state_machine.py` — Pure 4-state machine: QUIET/STARTING/SPEAKING/STOPPING, reset(), set_agent_speaking()
-- `app/vad_pipeline/silero_wrapper.py` — Silero model wrapper: PCM bytes → float prob, 8/16kHz resampling, zero-padding, reset_states()
-- `app/vad_pipeline/pipeline.py` — Async orchestrator: push_audio() / events queue / start() / stop()
-- `app/vad_pipeline/README.md` — Usage docs and state transition table
-
-**Files modified:**
-- `requirements.txt` — added silero-vad>=4.0.0, torchaudio>=2.0.0
-
-**Test counts:** 147 unit tests passing (28 new for Module 5; 6 slow Silero model tests excluded from fast run)
-
-## Key Architecture Notes for Module 5
-
-**State machine transitions:**
-- QUIET → STARTING: first frame above onset_threshold (0.5)
-- STARTING → SPEAKING: sustained 200ms above threshold
-- STARTING → QUIET: false start (silence before 200ms)
-- SPEAKING → STOPPING: first frame below offset_threshold (0.35)
-- STOPPING → QUIET: sustained 800ms silence → signal LLM to respond
-- STOPPING → SPEAKING: speech resumes before 800ms
-
-**Hysteresis zone:** probs in [0.35, 0.5) in STOPPING hold position — no transition.
-
-**Interrupt detection:** `pipeline.set_agent_speaking(True)` → any QUIET→STARTING emits `VADEvent(interrupted=True)`. Caller halts TTS and truncates LLM context.
-
-**Pipeline lifecycle:** `start()` calls `wrapper.reset()` then `machine.reset()` — both LSTM and state machine reset for each new call stream. Double-start guard raises RuntimeError.
-
-**Pipeline tests:** SileroWrapper is always mocked in fast tests — no model load. Run Silero tests separately with `python -m pytest tests/unit/test_vad_silero_wrapper.py -v -m slow`.
 
 ## Test Commands
 
 Fast tests (no model load, ~3s):
 ```powershell
-python -m pytest tests/unit/ --ignore=tests/unit/test_vad_silero_wrapper.py -v
+.venv\Scripts\python.exe -m pytest tests/unit/ --ignore=tests/unit/test_vad_silero_wrapper.py -q
 ```
 
-All including slow Silero model tests (~30s first run):
+All tests including slow Silero model tests:
 ```powershell
-python -m pytest tests/unit/ -v
+.venv\Scripts\python.exe -m pytest tests/unit/ -q
+```
+
+TypeScript check:
+```powershell
+cd app\dashboard; npx tsc --noEmit
 ```
 
 ## GitHub
 
 - Repo: https://github.com/abhi-30702/voice-outbound-agent
-- Branch: master (all modules merged directly)
-- gh CLI not available — use GitHub API with curl + PAT for future PRs
+- gh CLI now installed (run `gh auth login` to authenticate)

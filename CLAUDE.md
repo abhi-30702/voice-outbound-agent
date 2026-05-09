@@ -5,7 +5,7 @@
 ## Stack
 Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telnyx SIP, ElevenLabs TTS, Silero VAD, Anthropic Claude Sonnet
 
-## Current Phase: 7 (dashboard) — NEXT
+## Current Phase: 8 (n8n-flows) — NEXT
 
 ### Phase Status Summary
 **Phase 1 (db-schema):** COMPLETE - merged to master
@@ -36,9 +36,17 @@ Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telny
   - Plan: docs/superpowers/plans/2026-05-09-conversation-prompts-implementation.md
   - Key: PromptTemplate JSONB dataclasses, PromptRenderer (lead var injection), ConstraintValidator (12-word/no-bullets/no-special-chars), 3 persona templates (real estate, recruitment, financial services), 31 tests
 
-**Phase 7 (dashboard):** NEXT - Next.js 14 live call monitoring, campaign manager, KPI charts
-  - PRD Module 8 — see PRD.md §8
-  - Target dir: app/dashboard/
+**Phase 7 (dashboard):** COMPLETE - PR open, pending merge to master
+  - Branch: feature/module-7-dashboard
+  - PR: https://github.com/abhi-30702/voice-outbound-agent/pull/new/feature/module-7-dashboard
+  - Spec: docs/superpowers/specs/2026-05-09-dashboard-design.md
+  - Plan: docs/superpowers/plans/2026-05-09-dashboard-implementation.md
+  - Key: app/dashboard_api/ FastAPI module (REST + WebSocket), app/dashboard/ Next.js 14 (3 routes), ConnectionManager broadcast, Docker Compose service, 31 new tests (215 total)
+  - Known minor issues (non-blocking): PATCH /campaigns/{id}/status returns lead_count=0; /api/calls/active missing phone_number
+
+**Phase 8 (n8n-flows):** NEXT - post-call automation: CRM push, SMS follow-up, calendar booking
+  - PRD Module 9 — see PRD.md §4 module table
+  - Target dir: n8n-flows/
   - Start with brainstorming skill, then writing-plans, then subagent-driven-development
 
 ## PRD Reference
