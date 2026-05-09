@@ -8,104 +8,405 @@
 ✅ **Module 4 (post-call-analysis)**: Complete and merged to master
 ✅ **Module 5 (vad-pipeline)**: Complete and merged to master
 ✅ **Module 6 (conversation-prompts)**: Complete and merged to master
-🔁 **Module 7 (dashboard)**: COMPLETE — PR open, pending merge
-⏳ **Module 8 (n8n-flows)**: NEXT — not started
+🔁 **Module 7 (dashboard)**: COMPLETE — PR open on feature/module-7-dashboard, pending merge
+🔧 **Module 8 (n8n-flows)**: IN PROGRESS — Tasks 1-4 done, Tasks 5-6 remaining
 
 ## Git State
 
-**Active branch:** feature/module-7-dashboard (15 commits ahead of master)
-**PR:** https://github.com/abhi-30702/voice-outbound-agent/pull/new/feature/module-7-dashboard
-**master:** clean at f0451db
-**Test status:** 215 unit tests passing (1 pre-existing numpy skip in test_vad_silero_wrapper)
+**Active branch:** feature/module-7-dashboard
+**Test status:** 223 unit tests passing (1 pre-existing numpy skip)
 
-## First Action Next Session
-
-**Step 1 — Merge the Module 7 PR.**
-If not yet merged, either merge via GitHub UI or run:
-```powershell
-git checkout master
-git pull
-git merge feature/module-7-dashboard
-git push
-git branch -d feature/module-7-dashboard
+Recent commits (Module 8 work so far):
+```
+9a4b0eb feat: add n8n service to Docker Compose with n8n_data volume  ← Task 4
+fbf8d1d feat: wire _notify_n8n into _run_analysis after DB writes        ← Task 3
+2ea4382 test: strengthen n8n notify assertions (route.called, no-call guard) ← Task 2 fix
+1ba619b feat: add _notify_n8n fire-and-forget webhook notifier            ← Task 2
+c8e205d feat: add N8N_WEBHOOK_URL and N8N_WEBHOOK_SECRET settings; add respx ← Task 1
 ```
 
-**Step 2 — Start Module 8 (n8n-flows).**
-Create a new feature branch and invoke the brainstorming skill.
+## IMMEDIATE ACTION: Resume Module 8 at Task 5
 
-## What Was Built in Module 7 (dashboard)
+**DO NOT** re-run brainstorming or writing-plans — both are complete.
 
-**Backend — `app/dashboard_api/`:**
-- `schemas.py` — 8 Pydantic v2 models (CampaignOut, CampaignCreate, CampaignStatusPatch, LeadOut, LeadUploadResult, LeadAssign, ActiveCall, KpiOut)
-- `websocket.py` — ConnectionManager (connect/disconnect/broadcast), module-level `broadcast()` coroutine imported by webhook handlers
-- `kpi.py` — `get_kpi(db, range_)` → KpiOut; supports today / 7d / 30d ranges
-- `campaigns.py` — list_campaigns (outerjoin for lead count), create_campaign, patch_campaign_status
-- `leads.py` — list_leads, upload_leads (CSV parse via csv.DictReader), assign_leads; parse_csv validates required columns {phone_number, timezone}
-- `router.py` — api_router (/api prefix) + ws_router; all ValueError → HTTPException (400/404/422)
+Invoke `superpowers:subagent-driven-development` and resume at **Task 5**.
 
-**Webhook integration:**
-- `app/webhook_receiver/handlers/call_started.py` — broadcasts `call_started` event after DB write
-- `app/webhook_receiver/handlers/transcript_updated.py` — broadcasts `transcript_updated` event
-- `app/webhook_receiver/handlers/call_ended.py` — broadcasts `call_ended` event
-- `app/webhook_receiver/main.py` — mounts api_router and ws_router
+### Remaining tasks from `docs/superpowers/plans/2026-05-09-n8n-flows-implementation.md`:
 
-**Frontend — `app/dashboard/` (Next.js 14 App Router):**
-- `/` → LiveCallFeed (WebSocket) + CallCard list
-- `/campaigns` → CampaignTable (PATCH actions) + CreateCampaignModal + LeadUpload
-- `/kpi` → KpiChart (Recharts AreaChart, SWR 30s polling) + RangeSelector
-- Styling: Tailwind CSS only
+---
 
-**Docker:**
-- `app/dashboard/Dockerfile.dashboard` — 3-stage node:20-alpine (deps → builder → runner), output: standalone
-- `docker-compose.yml` — dashboard service on port 3000; API_INTERNAL_URL=http://api:8000 (server-side), NEXT_PUBLIC_WS_URL=ws://localhost:8000 (browser)
+#### Task 5: n8n flow JSON + README (NEXT)
 
-**Tests (31 new, 215 total):**
-- `tests/unit/test_dashboard_schemas.py` — 7 tests
-- `tests/unit/test_dashboard_websocket.py` — 6 tests
-- `tests/unit/test_dashboard_kpi.py` — 5 tests
-- `tests/unit/test_dashboard_campaigns.py` — 5 tests
-- `tests/unit/test_dashboard_leads.py` — 9 tests
+Create `n8n-flows/post-call-automation.json` with this EXACT content:
 
-**Known minor issues (non-blocking):**
-- `PATCH /campaigns/{id}/status` always returns `lead_count=0` (frontend ignores it)
-- `GET /api/calls/active` does not include `phone_number` (CallCard falls back to call_id display)
+```json
+{
+  "name": "Post-Call Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "post-call",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "post-call-automation"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "call_id": "={{ $json.call_id }}",
+            "phone_number": "={{ $json.phone_number }}",
+            "first_name": "={{ $json.first_name }}",
+            "last_name": "={{ $json.last_name }}",
+            "company": "={{ $json.company }}",
+            "call_outcome": "={{ $json.call_outcome }}",
+            "lead_temperature": "={{ $json.lead_temperature }}",
+            "sentiment": "={{ $json.sentiment }}",
+            "summary": "={{ $json.summary }}",
+            "callback_time": "={{ $json.callback_time }}",
+            "logged_at": "={{ new Date().toISOString() }}"
+          }
+        },
+        "options": {
+          "valueInputMode": "USER_ENTERED"
+        }
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [460, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "sms-cond-1",
+              "leftValue": "={{ $json.call_outcome }}",
+              "rightValue": "interested",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "sms-cond-2",
+              "leftValue": "={{ $json.call_outcome }}",
+              "rightValue": "callback_requested",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "any"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Should SMS?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telnyx.com/v2/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.TELNYX_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"{{ $env.TELNYX_FROM_NUMBER }}\",\n  \"to\": \"{{ $json.phone_number }}\",\n  \"text\": \"Hi {{ $json.first_name }}, thanks for speaking with us today. {{ $json.next_action }}\"\n}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Send SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 80]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cal-cond-1",
+              "leftValue": "={{ $json.callback_requested }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            },
+            {
+              "id": "cal-cond-2",
+              "leftValue": "={{ $json.callback_time }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "all"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Should book?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 420]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_CALENDAR_ID }}",
+          "mode": "id"
+        },
+        "start": "={{ $json.callback_time }}",
+        "end": "={{ DateTime.fromISO($json.callback_time).plus({minutes: 30}).toISO() }}",
+        "additionalFields": {
+          "summary": "=Callback: {{ $json.first_name }} {{ $json.last_name }}",
+          "description": "=Company: {{ $json.company }}\n\n{{ $json.summary }}\n\nNext action: {{ $json.next_action }}"
+        }
+      },
+      "id": "a1b2c3d4-0006-0006-0006-000000000006",
+      "name": "Create Calendar Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [900, 500],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Calendar account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Log to Sheets", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          { "node": "Should SMS?", "type": "main", "index": 0 },
+          { "node": "Should book?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Should SMS?": {
+      "main": [
+        [{ "node": "Send SMS", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Should book?": {
+      "main": [
+        [{ "node": "Create Calendar Event", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "voice-outbound-agent"
+  },
+  "id": "post-call-automation-v1",
+  "versionId": "2026-05-09"
+}
+```
 
-## Module 8 (n8n-flows) — What to Build
+Create `n8n-flows/README.md` with this content:
 
-Per PRD.md §4, Module 9 (our Phase 8): post-call automation flows in n8n.
+```markdown
+# n8n Flows — Post-Call Automation
 
-Key flows to design:
-- CRM push (update contact record after call ends)
-- SMS follow-up (send confirmation SMS via Telnyx)
-- Calendar booking (book a slot after successful qualification)
+## What this flow does
 
-Target directory: `n8n-flows/` (exported n8n JSON files)
-Entry point: n8n webhook trigger on call_ended event from webhook receiver
+After every call is analysed by the RQ worker, a webhook fires to n8n which:
 
-**Start the session with:**
-1. Read PRD.md §4 module table and any n8n-related sections
-2. Invoke brainstorming skill to design the flows
-3. Then writing-plans skill for the implementation plan
-4. Then subagent-driven-development to execute
+1. **Always** — appends one row to a Google Sheet (call_id, outcome, sentiment, summary, etc.)
+2. **If `call_outcome` is `interested` or `callback_requested`** — sends a Telnyx SMS to the lead
+3. **If `callback_requested == true` and `callback_time` is set** — creates a 30-min Google Calendar event at `callback_time`
+
+---
+
+## Setup
+
+### 1. Start n8n
+
+```bash
+docker compose up n8n
+```
+
+Open http://localhost:5678 and log in (admin / admin).
+
+### 2. Import the flow
+
+Workflows → **Import from file** → select `n8n-flows/post-call-automation.json`
+
+### 3. Create credentials (n8n UI → Credentials)
+
+| Credential type | Used by node |
+|---|---|
+| Google Sheets OAuth2 | Log to Sheets |
+| Google Calendar OAuth2 | Create Calendar Event |
+
+After creating each credential, open the relevant node, select the credential from the dropdown, and save.
+
+### 4. Set n8n environment variables
+
+In the n8n container (or `docker-compose.yml` → `n8n.environment`):
+
+```
+TELNYX_API_KEY=your_telnyx_api_key
+TELNYX_FROM_NUMBER=+91XXXXXXXXXX
+GOOGLE_SHEET_ID=your_google_spreadsheet_id
+GOOGLE_CALENDAR_ID=primary
+```
+
+The spreadsheet must have a sheet named `Sheet1` with these column headers in row 1:
+`call_id | phone_number | first_name | last_name | company | call_outcome | lead_temperature | sentiment | summary | callback_time | logged_at`
+
+### 5. Activate the flow
+
+Toggle the flow to **Active** in the n8n UI.
+
+---
+
+## Test with curl
+
+```bash
+curl -X POST http://localhost:5678/webhook/post-call \
+  -H "Content-Type: application/json" \
+  -H "X-Internal-Webhook-Secret: changeme" \
+  -d '{
+    "call_id": "00000000-0000-0000-0000-000000000001",
+    "lead_id": "00000000-0000-0000-0000-000000000002",
+    "phone_number": "+919876543210",
+    "first_name": "Ravi",
+    "last_name": "Sharma",
+    "company": "ABC Corp",
+    "call_outcome": "callback_requested",
+    "callback_requested": true,
+    "callback_time": "2026-05-10T10:00:00+05:30",
+    "summary": "Lead asked for a callback next morning.",
+    "lead_temperature": "hot",
+    "sentiment": "positive",
+    "objections_raised": ["too busy"],
+    "next_action": "Schedule a callback for tomorrow morning."
+  }'
+```
+
+---
+
+## Security note
+
+Change `N8N_WEBHOOK_SECRET: changeme` to a strong random value in production, and set the same value in the n8n Webhook node Header Auth credential.
+```
+
+Verify: `python -c "import json; json.load(open('n8n-flows/post-call-automation.json')); print('JSON valid')"`
+Commit: `git commit -m "feat: add n8n post-call automation flow and setup README"`
+
+---
+
+#### Task 6: Final test run
+
+Run: `.venv\Scripts\python.exe -m pytest tests/unit/ -q --tb=short`
+Expected: 225 passed, 1 pre-existing numpy skip
+Commit if fixes needed.
+
+---
+
+## What Was Built in Module 8 (so far)
+
+**`app/core/settings.py`** — Added:
+- `N8N_WEBHOOK_URL: str = Field(default="")` — empty = automation disabled
+- `N8N_WEBHOOK_SECRET: str = Field(default="")` — X-Internal-Webhook-Secret header value
+
+**`requirements.txt`** — Added `respx==0.21.1` (httpx mock for tests)
+
+**`app/post_call_analysis/worker.py`** — Added:
+- `import httpx`
+- `_notify_n8n(payload: dict)` — async, fire-and-forget, 5s timeout, catches all exceptions
+- In `_run_analysis`: captures `lead_first_name`, `lead_last_name`, `lead_company` from first session
+- Calls `await _notify_n8n({14-key payload})` at end of `_run_analysis` after both DB writes
+
+**`tests/unit/test_n8n_notify.py`** — 5 tests for `_notify_n8n` in isolation
+
+**`tests/unit/test_worker_notify.py`** — 3 integration tests (called after writes, payload keys, not called on missing transcript)
+
+**`docker-compose.yml`** — Added n8n service (n8nio/n8n:latest, port 5678, basic auth admin/admin, n8n_data volume, depends_on api). Added N8N_WEBHOOK_URL + N8N_WEBHOOK_SECRET to api service.
+
+## Module 7 PR
+
+Still open at: https://github.com/abhi-30702/voice-outbound-agent/pull/new/feature/module-7-dashboard
+Module 8 commits are on the same branch. When both modules are ready, merge the PR to master.
 
 ## Test Commands
 
-Fast tests (no model load, ~3s):
 ```powershell
-.venv\Scripts\python.exe -m pytest tests/unit/ --ignore=tests/unit/test_vad_silero_wrapper.py -q
+.venv\Scripts\python.exe -m pytest tests/unit/ -q --tb=short
 ```
 
-All tests including slow Silero model tests:
-```powershell
-.venv\Scripts\python.exe -m pytest tests/unit/ -q
-```
+## Key Plan/Spec Files
 
-TypeScript check:
-```powershell
-cd app\dashboard; npx tsc --noEmit
-```
-
-## GitHub
-
-- Repo: https://github.com/abhi-30702/voice-outbound-agent
-- gh CLI now installed (run `gh auth login` to authenticate)
+- Plan: `docs/superpowers/plans/2026-05-09-n8n-flows-implementation.md`
+- Spec: `docs/superpowers/specs/2026-05-09-n8n-flows-design.md`

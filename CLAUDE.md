@@ -5,7 +5,7 @@
 ## Stack
 Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telnyx SIP, ElevenLabs TTS, Silero VAD, Anthropic Claude Sonnet
 
-## Current Phase: 8 (n8n-flows) — NEXT
+## Current Phase: 8 (n8n-flows) — IN PROGRESS
 
 ### Phase Status Summary
 **Phase 1 (db-schema):** COMPLETE - merged to master
@@ -44,10 +44,12 @@ Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telny
   - Key: app/dashboard_api/ FastAPI module (REST + WebSocket), app/dashboard/ Next.js 14 (3 routes), ConnectionManager broadcast, Docker Compose service, 31 new tests (215 total)
   - Known minor issues (non-blocking): PATCH /campaigns/{id}/status returns lead_count=0; /api/calls/active missing phone_number
 
-**Phase 8 (n8n-flows):** NEXT - post-call automation: CRM push, SMS follow-up, calendar booking
-  - PRD Module 9 — see PRD.md §4 module table
-  - Target dir: n8n-flows/
-  - Start with brainstorming skill, then writing-plans, then subagent-driven-development
+**Phase 8 (n8n-flows):** IN PROGRESS - subagent-driven development interrupted mid-execution
+  - Branch: feature/module-7-dashboard (Module 8 work is on this same branch)
+  - Spec: docs/superpowers/specs/2026-05-09-n8n-flows-design.md
+  - Plan: docs/superpowers/plans/2026-05-09-n8n-flows-implementation.md
+  - Tasks 1-4 DONE; Tasks 5-6 REMAINING (see NEXT_SESSION.md for exact resume point)
+  - DO NOT re-run brainstorming or writing-plans — go straight to subagent-driven-development Task 5
 
 ## PRD Reference
   Location: PRD.md (project root)
