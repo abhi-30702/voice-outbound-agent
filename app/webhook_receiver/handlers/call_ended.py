@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.dashboard_api.websocket import broadcast
 from app.models.contact import ContactStatus
 from app.webhook_receiver.config import FAILED_DISCONNECT_REASONS
 from app.webhook_receiver.schemas.call_ended import CallEndedPayload
@@ -62,3 +63,8 @@ async def handle_call_ended(
             "lead_status": lead_status.value,
         },
     )
+    await broadcast({
+        "event": "call_ended",
+        "call_id": retell_call_id,
+        "payload": {"disconnect_reason": payload.disconnect_reason},
+    })
