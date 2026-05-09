@@ -42,3 +42,34 @@ def test_real_estate_renders():
     assert "Ravi" in rendered
     assert "Prestige Park" in rendered
     assert "Priya" in rendered
+
+
+from app.conversation_prompts.templates.recruitment import build_template as build_recruitment
+
+
+# ── Recruitment ────────────────────────────────────────────────────────────────
+
+def test_recruitment_template_has_six_steps():
+    template = build_recruitment()
+    assert len(template.flow) == 6
+
+
+def test_recruitment_template_has_three_objections():
+    template = build_recruitment()
+    assert len(template.objections) == 3
+
+
+def test_recruitment_validates():
+    template = build_recruitment()
+    rendered = _RENDERER.render(template.to_jsonb(), _SAMPLE_VARS)
+    errors = _VALIDATOR.check(rendered)
+    assert errors == [], f"Constraint violations: {errors}"
+
+
+def test_recruitment_renders():
+    template = build_recruitment()
+    rendered = _RENDERER.render(template.to_jsonb(), _SAMPLE_VARS)
+    assert isinstance(rendered, str)
+    assert len(rendered) > 0
+    assert "Ravi" in rendered
+    assert "Priya" in rendered
