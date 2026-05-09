@@ -3,7 +3,7 @@ import uuid
 from pydantic import ValidationError
 from app.dashboard_api.schemas import (
     CampaignOut, CampaignCreate, CampaignStatusPatch,
-    LeadOut, LeadUploadResult, LeadAssign, KpiOut,
+    LeadOut, LeadUploadResult, LeadAssign, KpiOut, ActiveCall,
 )
 
 
@@ -40,3 +40,12 @@ def test_lead_assign_requires_lead_ids():
 def test_campaign_status_patch_requires_status():
     with pytest.raises(ValidationError):
         CampaignStatusPatch()
+
+
+def test_active_call_serializes():
+    import uuid
+    from datetime import datetime, timezone
+    ac = ActiveCall(call_id="call_123", lead_id=uuid.uuid4(), status="calling", start_time=datetime.now(tz=timezone.utc))
+    d = ac.model_dump()
+    assert d["call_id"] == "call_123"
+    assert d["status"] == "calling"

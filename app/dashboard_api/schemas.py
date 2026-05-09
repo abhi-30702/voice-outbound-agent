@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CampaignOut(BaseModel):
@@ -16,11 +17,11 @@ class CampaignOut(BaseModel):
 class CampaignCreate(BaseModel):
     name: str
     prompt_template: dict
-    llm_config: dict = {}
+    llm_config: dict = Field(default_factory=dict)
 
 
 class CampaignStatusPatch(BaseModel):
-    status: str  # "active" | "paused" | "completed"
+    status: Literal["active", "paused", "completed"]
 
 
 class LeadOut(BaseModel):
