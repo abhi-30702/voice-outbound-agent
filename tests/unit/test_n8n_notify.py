@@ -46,6 +46,7 @@ async def test_notify_skips_when_url_empty():
             s.N8N_WEBHOOK_URL = ""
             s.N8N_WEBHOOK_SECRET = ""
             await _notify_n8n(SAMPLE_PAYLOAD)  # must not raise, must not call HTTP
+    assert not m.calls
 
 
 @pytest.mark.asyncio
@@ -71,8 +72,9 @@ async def test_notify_swallows_read_timeout():
 @pytest.mark.asyncio
 async def test_notify_swallows_http_500():
     with respx.mock() as m:
-        m.post(WEBHOOK_URL).mock(return_value=Response(500))
+        route = m.post(WEBHOOK_URL).mock(return_value=Response(500))
         with patch("app.post_call_analysis.worker.settings") as s:
             s.N8N_WEBHOOK_URL = WEBHOOK_URL
             s.N8N_WEBHOOK_SECRET = "secret"
             await _notify_n8n(SAMPLE_PAYLOAD)  # 500 is not an exception; must not raise
+    assert route.called
