@@ -49,10 +49,10 @@ async def test_1_cps_enforced_over_10_leads():
     mock_session = AsyncMock()
     mock_session.execute = AsyncMock(return_value=mock_result)
     # _dispatch_call uses session.get(Campaign, campaign_id)
-    mock_session.get = AsyncMock(return_value=MagicMock(
-        name="Test Campaign",
-        llm_config={"retell_agent_id": "agent_eval"},
-    ))
+    mock_campaign = MagicMock()
+    mock_campaign.name = "Test Campaign"
+    mock_campaign.llm_config = {"retell_agent_id": "agent_eval"}
+    mock_session.get = AsyncMock(return_value=mock_campaign)
     mock_session.add = MagicMock()
     mock_session.commit = AsyncMock()
 

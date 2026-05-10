@@ -18,6 +18,15 @@ Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telny
   - Key: app/dashboard_api/ FastAPI module (REST + WebSocket), app/dashboard/ Next.js 14 (3 routes), ConnectionManager broadcast, 31 new tests
 **Phase 8 (n8n-flows):** COMPLETE - merged to dev (PR #2)
   - Key: _notify_n8n fire-and-forget notifier, n8n Docker service, 6-node flow (Sheets+SMS+Calendar), 8 new tests (223 total)
+**Phase 9 (docker-compose):** COMPLETE - on master
+  - Key: docker-compose.yml (6 services with healthchecks), Dockerfile.api, Dockerfile.worker, scripts/run_worker.py, .env.example, Makefile
+**Phase 10 (evals — TASK-011):** COMPLETE - on master
+  - Key: tests/evals/ — 5 pytest files (12 mock tests pass), locustfile.py (CPS load test), kpi_check.py (standalone DB KPI script)
+  - DNC regression: 100-lead SQL gate test (needs real DB)
+  - Worker rate limit: 1 CPS over 10 leads (elapsed ≥ 9s, create_call × 10)
+  - Timezone gate: freezegun 5-timezone test
+  - Structured output: 3 transcripts × ExtractionResult schema validation
+  - Signature verification: valid=200, tampered=403, missing=422 (ASGI layer)
 
 ## PRD Reference
   Location: PRD.md (project root)
