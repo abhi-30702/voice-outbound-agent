@@ -5,7 +5,7 @@
 ## Stack
 Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telnyx SIP, ElevenLabs TTS, Silero VAD, Anthropic Claude Sonnet
 
-## Current Phase: ALL COMPLETE — merged to dev
+## Current Phase: ALL COMPLETE — master pushed to origin; docker-compose + evals need PR to dev
 
 ### Phase Status Summary
 **Phase 1 (db-schema):** COMPLETE - merged to dev
@@ -27,6 +27,13 @@ Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telny
   - Timezone gate: freezegun 5-timezone test
   - Structured output: 3 transcripts × ExtractionResult schema validation
   - Signature verification: valid=200, tampered=403, missing=422 (ASGI layer)
+
+## Local Dev Restart (after reboot)
+  1. `docker compose up -d redis`  — postgres16 starts automatically with Docker Desktop
+  2. Set env vars + `.venv\Scripts\python -m uvicorn app.webhook_receiver.main:app --host 0.0.0.0 --port 8000`
+  3. `cd app/dashboard && npm run dev`
+  DB: postgres:password@localhost:5432/voice_agent (migrations at head)
+  .env is NOT committed — reconfigure with real keys for production
 
 ## PRD Reference
   Location: PRD.md (project root)
