@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.dashboard_api.websocket import broadcast
 from app.models.contact import ContactStatus
 from app.webhook_receiver.schemas.call_started import CallStartedPayload
 from app.webhook_receiver.services import call_log_service, lead_service
@@ -56,3 +57,8 @@ async def handle_call_started(
         return
 
     logger.info("Handled call_started", extra={"retell_call_id": retell_call_id})
+    await broadcast({
+        "event": "call_started",
+        "call_id": retell_call_id,
+        "payload": {"from_number": payload.from_number},
+    })

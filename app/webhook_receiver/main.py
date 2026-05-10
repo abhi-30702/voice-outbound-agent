@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from app.core.settings import settings
 from app.db.session import close_db, init_session_factory
+from app.dashboard_api.router import api_router, ws_router
 from app.webhook_receiver.router import router
 
 
@@ -21,3 +22,5 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Retell Webhook Receiver", lifespan=lifespan)
 app.include_router(router)
+app.include_router(api_router)
+app.include_router(ws_router)
