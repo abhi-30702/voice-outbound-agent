@@ -27,15 +27,19 @@ def db_engine():
         ["alembic", "upgrade", "head"],
         check=True,
         cwd=str(PROJECT_ROOT),
+        timeout=60,
     )
     engine = create_async_engine(settings.DATABASE_URL, echo=False)
-    yield engine
-    engine.sync_engine.dispose()
-    subprocess.run(
-        ["alembic", "downgrade", "base"],
-        check=True,
-        cwd=str(PROJECT_ROOT),
-    )
+    try:
+        yield engine
+    finally:
+        engine.sync_engine.dispose()
+        subprocess.run(
+            ["alembic", "downgrade", "base"],
+            check=True,
+            cwd=str(PROJECT_ROOT),
+            timeout=60,
+        )
 
 
 @pytest_asyncio.fixture
@@ -44,9 +48,14 @@ async def db_session(db_engine):
     async with db_engine.connect() as conn:
         trans = await conn.begin()
         nested = await conn.begin_nested()   # SAVEPOINT
-        session = AsyncSession(bind=conn, expire_on_commit=False)
-        yield session
-        await session.close()
-        if nested.is_active:
-            await nested.rollback()
-        await trans.rollback()
+        session = AsyncSession(bind=conn, expire_on_commit=False, autoflush=False)
+        try:
+            yield session
+        finally:
+            await session.close()
+            try:
+                if nested.is_active:
+                    await nested.rollback()
+            except Exception:
+                pass
+            await trans.rollback()
