@@ -1,17 +1,29 @@
 services:
-  db:
+
+  postgres:
     image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: agent
-      POSTGRES_PASSWORD: agent
-      POSTGRES_DB: agent_ops
-    ports:
-      - "5432:5432"
+    env_file: .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redisdata:/data
     ports:
       - "6379:6379"
 
@@ -19,46 +31,52 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
+    env_file: .env
+    restart: unless-stopped
     ports:
       - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql+asyncpg://agent:agent@db:5432/agent_ops
-      REDIS_URL: redis://redis:6379/0
-      N8N_WEBHOOK_URL: http://n8n:5678/webhook/post-call
-      N8N_WEBHOOK_SECRET: changeme
     depends_on:
-      - db
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    env_file: .env
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   dashboard:
     build:
       context: app/dashboard
       dockerfile: Dockerfile.dashboard
+    env_file: .env
+    restart: unless-stopped
     ports:
       - "3000:3000"
-    environment:
-      API_INTERNAL_URL: http://api:8000
-      NEXT_PUBLIC_WS_URL: ws://localhost:8000
     depends_on:
       - api
 
   n8n:
     image: n8nio/n8n:latest
+    env_file: .env
+    restart: unless-stopped
     ports:
       - "5678:5678"
-    environment:
-      N8N_HOST: localhost
-      N8N_PORT: 5678
-      N8N_PROTOCOL: http
-      WEBHOOK_URL: http://localhost:5678/
-      N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: admin
-      N8N_BASIC_AUTH_PASSWORD: admin
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
-      - api
+      postgres:
+        condition: service_healthy
 
 volumes:
   pgdata:
+  redisdata:
   n8n_data:
