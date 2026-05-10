@@ -5,51 +5,19 @@
 ## Stack
 Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telnyx SIP, ElevenLabs TTS, Silero VAD, Anthropic Claude Sonnet
 
-## Current Phase: 8 (n8n-flows) — IN PROGRESS
+## Current Phase: ALL COMPLETE — merged to dev
 
 ### Phase Status Summary
-**Phase 1 (db-schema):** COMPLETE - merged to master
-**Phase 2 (dialing-worker):** COMPLETE - merged to master
-  - Spec: docs/superpowers/specs/2026-05-07-dialing-worker-design.md
-  - Plan: docs/superpowers/plans/2026-05-07-dialing-worker-implementation.md
-  - Docs: app/dialing_worker/README.md
-
-**Phase 3 (webhook-receiver):** COMPLETE - merged to master
-  - Spec: docs/superpowers/specs/2026-05-08-webhook-receiver-design.md
-  - Plan: docs/superpowers/plans/2026-05-08-webhook-receiver-implementation.md
-  - Docs: app/webhook_receiver/README.md
-
-**Phase 4 (post-call-analysis):** COMPLETE - merged to master
-  - Spec: docs/superpowers/specs/2026-05-08-post-call-analysis-design.md
-  - Plan: docs/superpowers/plans/2026-05-08-post-call-analysis-implementation.md
-  - Docs: app/post_call_analysis/README.md
-  - Key: analyze_call RQ job, Claude Sonnet tool use, DNC OR logic, dead-letter on retry exhaustion
-
-**Phase 5 (vad-pipeline):** COMPLETE - merged to master
-  - Spec: docs/superpowers/specs/2026-05-09-vad-pipeline-design.md
-  - Plan: docs/superpowers/plans/2026-05-09-vad-pipeline-implementation.md
-  - Docs: app/vad_pipeline/README.md
-  - Key: layered arch (schemas→state_machine→silero_wrapper→pipeline), async queue interface, reset() on start(), interrupted flag
-
-**Phase 6 (conversation-prompts):** COMPLETE - merged to master
-  - Spec: docs/superpowers/specs/2026-05-09-conversation-prompts-design.md
-  - Plan: docs/superpowers/plans/2026-05-09-conversation-prompts-implementation.md
-  - Key: PromptTemplate JSONB dataclasses, PromptRenderer (lead var injection), ConstraintValidator (12-word/no-bullets/no-special-chars), 3 persona templates (real estate, recruitment, financial services), 31 tests
-
-**Phase 7 (dashboard):** COMPLETE - PR open, pending merge to master
-  - Branch: feature/module-7-dashboard
-  - PR: https://github.com/abhi-30702/voice-outbound-agent/pull/new/feature/module-7-dashboard
-  - Spec: docs/superpowers/specs/2026-05-09-dashboard-design.md
-  - Plan: docs/superpowers/plans/2026-05-09-dashboard-implementation.md
-  - Key: app/dashboard_api/ FastAPI module (REST + WebSocket), app/dashboard/ Next.js 14 (3 routes), ConnectionManager broadcast, Docker Compose service, 31 new tests (215 total)
-  - Known minor issues (non-blocking): PATCH /campaigns/{id}/status returns lead_count=0; /api/calls/active missing phone_number
-
-**Phase 8 (n8n-flows):** IN PROGRESS - subagent-driven development interrupted mid-execution
-  - Branch: feature/module-7-dashboard (Module 8 work is on this same branch)
-  - Spec: docs/superpowers/specs/2026-05-09-n8n-flows-design.md
-  - Plan: docs/superpowers/plans/2026-05-09-n8n-flows-implementation.md
-  - Tasks 1-4 DONE; Tasks 5-6 REMAINING (see NEXT_SESSION.md for exact resume point)
-  - DO NOT re-run brainstorming or writing-plans — go straight to subagent-driven-development Task 5
+**Phase 1 (db-schema):** COMPLETE - merged to dev
+**Phase 2 (dialing-worker):** COMPLETE - merged to dev
+**Phase 3 (webhook-receiver):** COMPLETE - merged to dev
+**Phase 4 (post-call-analysis):** COMPLETE - merged to dev
+**Phase 5 (vad-pipeline):** COMPLETE - merged to dev
+**Phase 6 (conversation-prompts):** COMPLETE - merged to dev
+**Phase 7 (dashboard):** COMPLETE - merged to dev (PR #2)
+  - Key: app/dashboard_api/ FastAPI module (REST + WebSocket), app/dashboard/ Next.js 14 (3 routes), ConnectionManager broadcast, 31 new tests
+**Phase 8 (n8n-flows):** COMPLETE - merged to dev (PR #2)
+  - Key: _notify_n8n fire-and-forget notifier, n8n Docker service, 6-node flow (Sheets+SMS+Calendar), 8 new tests (223 total)
 
 ## PRD Reference
   Location: PRD.md (project root)
