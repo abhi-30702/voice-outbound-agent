@@ -104,7 +104,7 @@ class RetellClient:
                 status_code=None,
             ) from e
 
-    async def create_agent(self, payload: dict) -> dict:
+    async def create_agent(self, payload: dict) -> dict[str, Any]:
         """Create an agent via Retell AI.
 
         Args:
@@ -148,7 +148,7 @@ class RetellClient:
                 status_code=None,
             ) from e
 
-    async def update_agent(self, agent_id: str, payload: dict) -> dict:
+    async def update_agent(self, agent_id: str, payload: dict) -> dict[str, Any]:
         """Update an agent via Retell AI.
 
         Args:

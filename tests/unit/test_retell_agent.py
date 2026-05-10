@@ -1,4 +1,3 @@
-import json
 import pytest
 import httpx
 from unittest.mock import AsyncMock, MagicMock
@@ -38,8 +37,7 @@ async def test_create_agent_posts_to_correct_endpoint():
     assert result["agent_id"] == "agent-abc"
 
 
-@pytest.mark.asyncio
-async def test_create_agent_includes_bearer_auth():
+def test_create_agent_includes_bearer_auth():
     client = RetellClient(api_key="my-secret-key")
     # Verify auth header is set on the underlying httpx client at init time
     assert client.client.headers["Authorization"] == "Bearer my-secret-key"
@@ -138,6 +136,18 @@ async def test_create_agent_timeout_is_retriable():
 
     with pytest.raises(RetellAPIError) as exc_info:
         await client.create_agent(AGENT_PAYLOAD)
+
+    assert exc_info.value.retriable is True
+    assert exc_info.value.status_code is None
+
+
+@pytest.mark.asyncio
+async def test_update_agent_request_error_is_retriable():
+    client = _make_client()
+    client.client.patch = AsyncMock(side_effect=httpx.ConnectError("connection refused"))
+
+    with pytest.raises(RetellAPIError) as exc_info:
+        await client.update_agent("agent-abc", AGENT_PAYLOAD)
 
     assert exc_info.value.retriable is True
     assert exc_info.value.status_code is None
