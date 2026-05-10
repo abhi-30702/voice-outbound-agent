@@ -5,7 +5,7 @@ Usage:
 """
 import asyncio
 import sys
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy import text
 from app.core.settings import settings
 
@@ -14,16 +14,14 @@ KPI_TABLE_HEADER = f"{'KPI':<35} {'Value':>12} {'Target':>12} {'Alert':>10} {'St
 KPI_TABLE_SEP = "-" * 80
 
 
-async def _fetch_kpis(engine) -> list[dict]:
+async def _fetch_kpis(engine: AsyncEngine) -> list[dict]:
     """Run all KPI queries and return list of result dicts."""
     async with engine.connect() as conn:
-        # Avg call duration
         row = await conn.execute(text(
             "SELECT AVG(duration_sec) FROM agent_operations.call_logs WHERE duration_sec IS NOT NULL"
         ))
         avg_duration = row.scalar()
 
-        # Structured output completion %
         row = await conn.execute(text("""
             SELECT
                 COUNT(CASE WHEN structured_data IS NOT NULL THEN 1 END) * 100.0
@@ -32,7 +30,7 @@ async def _fetch_kpis(engine) -> list[dict]:
         """))
         structured_pct = row.scalar()
 
-        # DNC miss rate (calls made to DNC-listed numbers)
+        # count calls placed to numbers already in DNC registry
         row = await conn.execute(text("""
             SELECT COUNT(DISTINCT cl.id)
             FROM agent_operations.call_logs cl
@@ -41,7 +39,6 @@ async def _fetch_kpis(engine) -> list[dict]:
         """))
         dnc_misses = row.scalar() or 0
 
-        # Call abandon rate %
         row = await conn.execute(text("""
             SELECT
                 COUNT(CASE WHEN duration_sec < 10 THEN 1 END) * 100.0
