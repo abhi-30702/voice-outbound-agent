@@ -2,6 +2,12 @@ import math
 import pytest
 import torch
 
+try:
+    import numpy
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+
 from app.vad_pipeline.silero_wrapper import SileroWrapper
 
 
@@ -19,6 +25,7 @@ class TestSileroWrapper:
         assert isinstance(prob, float)
         assert 0.0 <= prob < 0.5
 
+    @pytest.mark.skipif(not HAS_NUMPY, reason="NumPy not installed")
     def test_infer_returns_float_in_valid_range(self):
         wrapper = SileroWrapper(target_sample_rate=16000)
         samples = [int(32767 * math.sin(2 * math.pi * 440 * i / 16000)) for i in range(512)]
