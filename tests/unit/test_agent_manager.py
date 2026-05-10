@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 from app.dialing_worker.agent_manager import build_agent_payload, sync_agent
@@ -18,19 +18,17 @@ def _make_campaign(
     return campaign
 
 
-@pytest.mark.asyncio
-async def test_build_agent_payload_maps_system_prompt():
+def test_build_agent_payload_maps_system_prompt():
     campaign = _make_campaign(
         prompt_template={"system_prompt": "Call leads and qualify them."},
         llm_config={"voice_id": "voice-xyz", "language": "en-US"},
     )
-    payload = await build_agent_payload(campaign)
+    payload = build_agent_payload(campaign)
     assert payload["response_engine"]["system_prompt"] == "Call leads and qualify them."
     assert payload["response_engine"]["type"] == "retell-llm"
 
 
-@pytest.mark.asyncio
-async def test_build_agent_payload_maps_llm_config_fields():
+def test_build_agent_payload_maps_llm_config_fields():
     campaign = _make_campaign(
         llm_config={
             "voice_id": "v-001",
@@ -39,7 +37,7 @@ async def test_build_agent_payload_maps_llm_config_fields():
             "ambient_sound": "office",
         }
     )
-    payload = await build_agent_payload(campaign)
+    payload = build_agent_payload(campaign)
     assert payload["voice_id"] == "v-001"
     assert payload["language"] == "hi-IN"
     assert payload["max_call_duration_ms"] == 300000
@@ -47,10 +45,9 @@ async def test_build_agent_payload_maps_llm_config_fields():
     assert payload["agent_name"] == campaign.name
 
 
-@pytest.mark.asyncio
-async def test_build_agent_payload_defaults():
+def test_build_agent_payload_defaults():
     campaign = _make_campaign(prompt_template={}, llm_config={})
-    payload = await build_agent_payload(campaign)
+    payload = build_agent_payload(campaign)
     assert payload["language"] == "en-US"
     assert payload["max_call_duration_ms"] == 600_000
     assert payload["ambient_sound"] is None
@@ -83,8 +80,27 @@ async def test_sync_agent_updates_when_agent_id_exists():
 
     result = await sync_agent(campaign, mock_client, mock_db)
 
-    mock_client.update_agent.assert_awaited_once_with("existing-agent-456", await build_agent_payload(campaign))
+    expected_payload = build_agent_payload(campaign)
+    mock_client.update_agent.assert_awaited_once_with("existing-agent-456", expected_payload)
     mock_client.create_agent.assert_not_awaited()
     mock_db.execute.assert_not_awaited()
     mock_db.commit.assert_not_awaited()
     assert result == "existing-agent-456"
+
+
+@pytest.mark.asyncio
+async def test_sync_agent_propagates_retell_api_error():
+    from app.dialing_worker.errors import RetellAPIError
+
+    campaign = _make_campaign(llm_config={})
+    mock_client = AsyncMock()
+    mock_client.create_agent = AsyncMock(
+        side_effect=RetellAPIError(message="rate limited", retriable=True, status_code=429)
+    )
+    mock_db = AsyncMock()
+
+    with pytest.raises(RetellAPIError):
+        await sync_agent(campaign, mock_client, mock_db)
+
+    mock_db.execute.assert_not_awaited()
+    mock_db.commit.assert_not_awaited()

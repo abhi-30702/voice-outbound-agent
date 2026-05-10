@@ -1,11 +1,15 @@
+import logging
+
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dialing_worker.retell_client import RetellClient
 from app.models.campaign import Campaign
 
+logger = logging.getLogger(__name__)
 
-async def build_agent_payload(campaign: Campaign) -> dict:
+
+def build_agent_payload(campaign: Campaign) -> dict:
     pt = campaign.prompt_template or {}
     lc = campaign.llm_config or {}
     return {
@@ -26,7 +30,7 @@ async def sync_agent(
     client: RetellClient,
     db: AsyncSession,
 ) -> str:
-    payload = await build_agent_payload(campaign)
+    payload = build_agent_payload(campaign)
     lc = campaign.llm_config or {}
     existing_id = lc.get("retell_agent_id")
 
@@ -36,10 +40,18 @@ async def sync_agent(
 
     result = await client.create_agent(payload)
     agent_id = result["agent_id"]
-    await db.execute(
-        update(Campaign)
-        .where(Campaign.id == campaign.id)
-        .values(llm_config={**lc, "retell_agent_id": agent_id})
-    )
-    await db.commit()
+    try:
+        await db.execute(
+            update(Campaign)
+            .where(Campaign.id == campaign.id)
+            .values(llm_config={**lc, "retell_agent_id": agent_id})
+        )
+        await db.commit()
+    except Exception:
+        logger.error(
+            "Retell agent created (agent_id=%s) but DB write failed — "
+            "manually set retell_agent_id in campaign.llm_config to recover",
+            agent_id,
+        )
+        raise
     return agent_id
