@@ -104,6 +104,97 @@ class RetellClient:
                 status_code=None,
             ) from e
 
+    async def create_agent(self, payload: dict) -> dict:
+        """Create an agent via Retell AI.
+
+        Args:
+            payload: Agent configuration payload
+
+        Returns:
+            Agent creation response from Retell API (contains agent_id, etc.)
+
+        Raises:
+            RetellAPIError: If API request fails
+                - retriable=True for 429, 5xx, timeout
+                - retriable=False for 4xx (except 429)
+        """
+        try:
+            response = await self.client.post("/v2/create-agent", json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.TimeoutException as e:
+            raise RetellAPIError(
+                message=f"Retell API timeout: {str(e)}",
+                retriable=True,
+                status_code=None,
+            ) from e
+        except httpx.HTTPStatusError as e:
+            status_code = e.response.status_code
+            retriable = status_code in (429, 500, 502, 503, 504)
+            try:
+                error_body = e.response.json()
+                error_msg = error_body.get("message", str(error_body))
+            except (json.JSONDecodeError, ValueError):
+                error_msg = e.response.text or str(e)
+            raise RetellAPIError(
+                message=f"Retell API error ({status_code}): {error_msg}",
+                retriable=retriable,
+                status_code=status_code,
+            ) from e
+        except httpx.RequestError as e:
+            raise RetellAPIError(
+                message=f"Retell API request failed: {str(e)}",
+                retriable=True,
+                status_code=None,
+            ) from e
+
+    async def update_agent(self, agent_id: str, payload: dict) -> dict:
+        """Update an agent via Retell AI.
+
+        Args:
+            agent_id: Retell AI agent ID
+            payload: Agent configuration payload (fields to update)
+
+        Returns:
+            Agent update response from Retell API
+
+        Raises:
+            RetellAPIError: If API request fails
+                - retriable=True for 429, 5xx, timeout
+                - retriable=False for 4xx (except 429)
+        """
+        try:
+            response = await self.client.patch(
+                f"/v2/update-agent/{agent_id}", json=payload
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.TimeoutException as e:
+            raise RetellAPIError(
+                message=f"Retell API timeout: {str(e)}",
+                retriable=True,
+                status_code=None,
+            ) from e
+        except httpx.HTTPStatusError as e:
+            status_code = e.response.status_code
+            retriable = status_code in (429, 500, 502, 503, 504)
+            try:
+                error_body = e.response.json()
+                error_msg = error_body.get("message", str(error_body))
+            except (json.JSONDecodeError, ValueError):
+                error_msg = e.response.text or str(e)
+            raise RetellAPIError(
+                message=f"Retell API error ({status_code}): {error_msg}",
+                retriable=retriable,
+                status_code=status_code,
+            ) from e
+        except httpx.RequestError as e:
+            raise RetellAPIError(
+                message=f"Retell API request failed: {str(e)}",
+                retriable=True,
+                status_code=None,
+            ) from e
+
     async def close(self) -> None:
         """Close the HTTP client connection."""
         await self.client.aclose()
