@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock
 
 from app.dialing_worker.dynamic_variables import DynamicVariables
@@ -59,8 +58,7 @@ def test_from_lead_no_custom_vars():
     campaign = _make_campaign()
     dv = DynamicVariables.from_lead(lead, campaign)
     d = dv.model_dump()
-    assert "first_name" in d
-    assert "phone_number" in d
+    assert set(d.keys()) == {"first_name", "last_name", "company", "phone_number", "campaign_name"}
 
 
 def test_to_retell_dict_all_strings():
