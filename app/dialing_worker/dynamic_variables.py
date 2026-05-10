@@ -23,7 +23,8 @@ class DynamicVariables(BaseModel):
             "campaign_name": campaign.name,
         }
         extras = lead.custom_vars or {}
-        return cls(**base, **extras)
+        merged = {**extras, **base}
+        return cls(**merged)
 
     def to_retell_dict(self) -> dict[str, str]:
         return {k: str(v) for k, v in self.model_dump().items()}

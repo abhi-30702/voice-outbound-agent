@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +10,7 @@ from app.models.campaign import Campaign
 logger = logging.getLogger(__name__)
 
 
-def build_agent_payload(campaign: Campaign) -> dict:
+def build_agent_payload(campaign: Campaign) -> dict[str, Any]:
     pt = campaign.prompt_template or {}
     lc = campaign.llm_config or {}
     return {

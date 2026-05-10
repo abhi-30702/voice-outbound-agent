@@ -104,3 +104,18 @@ async def test_sync_agent_propagates_retell_api_error():
 
     mock_db.execute.assert_not_awaited()
     mock_db.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_sync_agent_raises_and_logs_on_db_failure():
+    campaign = _make_campaign(llm_config={})
+    mock_client = AsyncMock()
+    mock_client.create_agent = AsyncMock(return_value={"agent_id": "orphan-agent-789"})
+    mock_db = AsyncMock()
+    mock_db.execute = AsyncMock(side_effect=RuntimeError("DB connection lost"))
+
+    with pytest.raises(RuntimeError, match="DB connection lost"):
+        await sync_agent(campaign, mock_client, mock_db)
+
+    mock_client.create_agent.assert_awaited_once()
+    mock_db.commit.assert_not_awaited()

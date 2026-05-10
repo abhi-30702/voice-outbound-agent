@@ -81,3 +81,10 @@ def test_to_retell_dict_coerces_bool_custom_var():
     campaign = _make_campaign()
     result = DynamicVariables.from_lead(lead, campaign).to_retell_dict()
     assert result["verified"] == "True"
+
+
+def test_from_lead_base_fields_win_over_custom_vars():
+    lead = _make_lead(first_name="Ravi", custom_vars={"first_name": "INJECTED"})
+    campaign = _make_campaign()
+    dv = DynamicVariables.from_lead(lead, campaign)
+    assert dv.first_name == "Ravi"
