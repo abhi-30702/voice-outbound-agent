@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session_factory
 from app.dialing_worker.config import DialerConfig
+from app.dialing_worker.dynamic_variables import DynamicVariables
 from app.dialing_worker.errors import RetellAPIError
 from app.dialing_worker.phone_utils import is_e164
 from app.dialing_worker.retell_client import RetellClient
@@ -173,21 +174,14 @@ class DialerWorker:
             logger.error(f"Campaign {lead.campaign_id} not found for lead {lead.id}")
             return
 
-        # Build dynamic variables from lead data + custom vars
-        dynamic_variables = {
-            "first_name": lead.first_name or "",
-            "company": lead.company or "",
-        }
-        if lead.custom_vars:
-            dynamic_variables.update(lead.custom_vars)
+        # Build typed dynamic variables from lead + campaign
+        dynamic_variables = DynamicVariables.from_lead(lead, campaign).to_retell_dict()
 
         # Call Retell API to create the call
         try:
             response = await self.retell_client.create_call(
                 to_number=lead.phone_number,
-                agent_id=campaign.llm_config.get(
-                    "retell_agent_id", ""
-                ),  # Simplified
+                agent_id=campaign.llm_config.get("retell_agent_id", ""),
                 dynamic_variables=dynamic_variables,
             )
             retell_call_id = response.get("call_id")
