@@ -86,8 +86,10 @@ Expected result:
 
 ## Security note
 
-The `X-Internal-Webhook-Secret` header is checked by the n8n flow using the **Header Auth** method. Set the same secret in:
-- `api` service env: `N8N_WEBHOOK_SECRET=changeme`
-- n8n flow Webhook node → Header Auth credential: value `changeme`
+The `X-Internal-Webhook-Secret` header is sent by the api service on every webhook POST to n8n. The n8n Webhook node does **not** validate this header out of the box — on the internal Docker network this is acceptable since port 5678 is not internet-exposed.
 
-Change `changeme` to a strong random value in production.
+For internet-facing or multi-tenant deployments, add Header Auth to the Webhook node in the n8n UI:
+1. Credentials → Create → **Header Auth** → Name: `X-Internal-Webhook-Secret`, Value: the same secret as `N8N_WEBHOOK_SECRET` in the api service
+2. Open the Webhook node → Authentication → select the Header Auth credential
+
+Change `N8N_WEBHOOK_SECRET: changeme` in `docker-compose.yml` to a strong random value before any external deployment.
