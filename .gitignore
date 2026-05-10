@@ -34,3 +34,4 @@ Thumbs.db
 
 # Logs
 *.log
+app/dashboard/next-env.d.ts
