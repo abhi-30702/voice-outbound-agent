@@ -61,12 +61,7 @@ async def mock_session_factory():
 
 @pytest_asyncio.fixture
 async def client(mock_redis, mock_session_factory):
-    """
-    HTTP client against the webhook app with mocked Redis and DB.
-
-    ASGITransport does not trigger ASGI lifespan, so we inject dependencies
-    directly into app.state. Clean up after each test to avoid state bleed.
-    """
+    """ASGI client with mocked Redis and DB; skips lifespan via ASGITransport."""
     app.state.redis = mock_redis
     app.state.session_factory = mock_session_factory
     with patch("app.core.settings.settings.RETELL_WEBHOOK_SECRET", TEST_SECRET):
@@ -80,13 +75,7 @@ async def client(mock_redis, mock_session_factory):
 
 @pytest.mark.asyncio
 async def test_valid_sig_returns_200(client):
-    """
-    Valid HMAC signature should return 200 OK.
-
-    Setup: compute HMAC from the correct body using TEST_SECRET.
-    POST with body + signature + content-type header.
-    Patch dispatch to prevent real handler execution.
-    """
+    """Valid HMAC signature returns 200 OK."""
     body = json.dumps(
         {"event": "call_started", "call_id": "call_sig_001"}
     ).encode()
@@ -108,20 +97,13 @@ async def test_valid_sig_returns_200(client):
 
 @pytest.mark.asyncio
 async def test_tampered_body_returns_403(client):
-    """
-    Body tampered after signature was computed should return 403 Forbidden.
-
-    Setup: compute HMAC from original body.
-    Flip one byte of the body.
-    POST with tampered body but original HMAC.
-    Signature verification should fail → 403.
-    """
+    """Body tampered after signing returns 403 Forbidden."""
     body = json.dumps(
         {"event": "call_started", "call_id": "call_sig_001"}
     ).encode()
-    sig = _make_sig(body)  # Signature for original body
+    sig = _make_sig(body)
 
-    # Tamper: flip first byte
+    # any single-byte change invalidates the HMAC
     tampered = bytearray(body)
     tampered[0] ^= 0xFF
     tampered = bytes(tampered)
@@ -140,12 +122,7 @@ async def test_tampered_body_returns_403(client):
 
 @pytest.mark.asyncio
 async def test_missing_sig_header_returns_422(client):
-    """
-    Missing x-retell-signature header should return 422 Unprocessable Entity.
-
-    FastAPI returns 422 when a required Header() is absent.
-    POST with body but NO x-retell-signature header.
-    """
+    """Missing x-retell-signature header returns 422 Unprocessable Entity."""
     body = json.dumps(
         {"event": "call_started", "call_id": "call_sig_001"}
     ).encode()
