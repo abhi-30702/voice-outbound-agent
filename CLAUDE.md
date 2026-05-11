@@ -5,7 +5,7 @@
 ## Stack
 Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telnyx SIP, ElevenLabs TTS, Silero VAD, Anthropic Claude Sonnet
 
-## Current Phase: ALL COMPLETE — PR #3 open (master → dev) for docker-compose + evals
+## Current Phase: ALL COMPLETE — all PRs merged, dev fully up to date
 
 ### Phase Status Summary
 **Phase 1 (db-schema):** COMPLETE - merged to dev
@@ -18,19 +18,21 @@ Python 3.13, FastAPI, PostgreSQL 16, Redis, Docker, Next.js 14, Retell AI, Telny
   - Key: app/dashboard_api/ FastAPI module (REST + WebSocket), app/dashboard/ Next.js 14 (3 routes), ConnectionManager broadcast, 31 new tests
 **Phase 8 (n8n-flows):** COMPLETE - merged to dev (PR #2)
   - Key: _notify_n8n fire-and-forget notifier, n8n Docker service, 6-node flow (Sheets+SMS+Calendar), 8 new tests (223 total)
-**Phase 9 (docker-compose):** COMPLETE - on master
+**Phase 9 (docker-compose):** COMPLETE - merged to dev (PR #3)
   - Key: docker-compose.yml (6 services with healthchecks), Dockerfile.api, Dockerfile.worker, scripts/run_worker.py, .env.example, Makefile
-**Phase 10 (evals — TASK-011):** COMPLETE - on master; PR #3 open → dev
+**Phase 10 (evals — TASK-011):** COMPLETE - merged to dev (PR #3)
   - Key: tests/evals/ — 5 pytest files (12 mock tests pass), locustfile.py (CPS load test), kpi_check.py (standalone DB KPI script)
   - DNC regression: 100-lead SQL gate test (needs real DB)
   - Worker rate limit: 1 CPS over 10 leads (elapsed ≥ 9s, create_call × 10)
   - Timezone gate: freezegun 5-timezone test
   - Structured output: 3 transcripts × ExtractionResult schema validation
   - Signature verification: valid=200, tampered=403, missing=422 (ASGI layer)
+**Documentation:** COMPLETE - merged to dev (via PR #3 merge commit 990d36f)
+  - Key: voice-outbound-agent-documentation.docx (~35 pages Word doc, 9 sections + 2 appendices)
+  - Generator: scripts/generate_docs.py (python-docx) — re-run to regenerate
 
 ## Open PRs
-  PR #3: master → dev — docker-compose full stack + TASK-011 evals (19 commits)
-  URL: https://github.com/abhi-30702/voice-outbound-agent/pull/3
+  None — all PRs merged
 
 ## Local Dev Restart (after reboot)
   1. `docker compose up -d redis`  — postgres16 starts automatically with Docker Desktop
