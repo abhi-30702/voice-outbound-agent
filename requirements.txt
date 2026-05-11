@@ -16,3 +16,5 @@ anthropic>=0.25.0
 redis>=4.5.0
 silero-vad>=4.0.0
 torchaudio>=2.0.0
+freezegun>=1.5.0
+locust>=2.29.0
