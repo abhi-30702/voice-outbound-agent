@@ -203,6 +203,16 @@ def build(output_path):
         ("6.", "API Reference", True),
         ("7.", "Deployment Guide", True),
         ("8.", "Compliance and Operations", True),
+        ("9.", "Security Hardening", True),
+        ("  9.1", "Secrets Management", False),
+        ("  9.2", "TLS and HTTPS", False),
+        ("  9.3", "Network Isolation", False),
+        ("  9.4", "Database Security", False),
+        ("  9.5", "Redis Security", False),
+        ("  9.6", "Webhook Security", False),
+        ("  9.7", "API Security", False),
+        ("  9.8", "Docker Image Security", False),
+        ("  9.9", "Security Hardening Checklist", False),
         ("Appendix A", "Environment Variables Reference", True),
         ("Appendix B", "Glossary", True),
     ]
@@ -1421,6 +1431,377 @@ def build(output_path):
             ["Consent Timestamp Storage", "Lead import must record consent timestamp, disclosure text version, and source IP address alongside each lead record.", "High"],
             ["Recording Auto-Purge", "call_logs.recording_url entries must be purged 90 days post-call unless flagged. No automated purge job currently exists.", "Medium"],
             ["Latency Instrumentation", "End-to-end latency and first-5-second detection KPIs require additional columns in call_logs and Retell webhook metadata.", "Medium"],
+        ]
+    )
+
+    pb(doc)
+
+    # ── Section 9: Security Hardening ────────────────────────────────────────
+    h1(doc, "9.  Security Hardening")
+
+    para(doc,
+        "This section documents the security controls that must be applied before the system "
+        "handles real customer data in a production environment. It covers secrets management, "
+        "TLS termination, network isolation, database hardening, API security, Docker image "
+        "hygiene, and a consolidated production security checklist."
+    )
+
+    h2(doc, "9.1  Secrets Management")
+    para(doc,
+        "The .env file must never be committed to version control. The .gitignore file already "
+        "excludes it, but additional controls are recommended for production deployments."
+    )
+    h3(doc, "Principles")
+    bul(doc, "Never embed secrets in Dockerfiles, docker-compose.yml, or application source code.")
+    bul(doc, "Rotate all API keys immediately if they are accidentally exposed in a commit, log file, or error message.")
+    bul(doc, "Use a dedicated secrets manager in production — see options below.")
+    bul(doc, "Set file permissions on .env to 600 (owner read/write only) on any shared server.")
+
+    h3(doc, "Recommended Secrets Managers")
+    tbl(doc,
+        ["Option", "Best For", "Integration Method"],
+        [
+            ["AWS Secrets Manager", "AWS-hosted deployments", "Inject as environment variables via ECS task definition or EC2 IAM role"],
+            ["HashiCorp Vault", "Self-hosted or multi-cloud", "vault agent sidecar or envconsul to inject into Docker containers"],
+            ["GCP Secret Manager", "GCP-hosted deployments", "Secret versions mounted as environment variables in Cloud Run / GKE"],
+            ["Docker Swarm / Kubernetes Secrets", "Container-native deployments", "Mount secrets as files or env vars in pod/service spec — base64-encoded at rest"],
+        ]
+    )
+
+    h3(doc, "Verifying .env Is Not Tracked")
+    code(doc,
+        "# Confirm .env is excluded from git tracking\n"
+        "git check-ignore -v .env\n"
+        "# Expected output: .gitignore:1:.env    .env\n"
+        "\n"
+        "# Scan git history for accidentally committed secrets\n"
+        "git log --all --full-history -- .env\n"
+        "# If output is non-empty, the file was committed — rotate all keys immediately"
+    )
+
+    h2(doc, "9.2  TLS and HTTPS")
+    para(doc,
+        "All external traffic — inbound webhook requests from Retell AI, dashboard browser "
+        "sessions, and n8n webhook triggers — must travel over TLS. The FastAPI application "
+        "itself does not terminate TLS; a reverse proxy must sit in front of it."
+    )
+    h3(doc, "Recommended: Nginx with Certbot (Let's Encrypt)")
+    code(doc,
+        "# Install Nginx and Certbot on the host\n"
+        "sudo apt install nginx certbot python3-certbot-nginx\n"
+        "\n"
+        "# Obtain a certificate (replace with your domain)\n"
+        "sudo certbot --nginx -d agent.yourdomain.com\n"
+        "\n"
+        "# Certbot will auto-configure the Nginx server block.\n"
+        "# Verify auto-renewal is active:\n"
+        "sudo systemctl status certbot.timer"
+    )
+    h3(doc, "Minimum Nginx Configuration")
+    code(doc,
+        "# /etc/nginx/sites-available/voice-agent\n"
+        "server {\n"
+        "    listen 443 ssl;\n"
+        "    server_name agent.yourdomain.com;\n"
+        "\n"
+        "    ssl_certificate     /etc/letsencrypt/live/agent.yourdomain.com/fullchain.pem;\n"
+        "    ssl_certificate_key /etc/letsencrypt/live/agent.yourdomain.com/privkey.pem;\n"
+        "    ssl_protocols       TLSv1.2 TLSv1.3;\n"
+        "    ssl_ciphers         HIGH:!aNULL:!MD5;\n"
+        "\n"
+        "    location / {\n"
+        "        proxy_pass         http://127.0.0.1:8000;\n"
+        "        proxy_set_header   Host $host;\n"
+        "        proxy_set_header   X-Real-IP $remote_addr;\n"
+        "        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;\n"
+        "        proxy_set_header   X-Forwarded-Proto $scheme;\n"
+        "        proxy_http_version 1.1;\n"
+        "        proxy_set_header   Upgrade $http_upgrade;\n"
+        "        proxy_set_header   Connection 'upgrade';  # required for WebSocket\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "# Redirect HTTP to HTTPS\n"
+        "server {\n"
+        "    listen 80;\n"
+        "    server_name agent.yourdomain.com;\n"
+        "    return 301 https://$host$request_uri;\n"
+        "}"
+    )
+    para(doc,
+        "Set WEBHOOK_BASE_URL to https://agent.yourdomain.com after TLS is in place. "
+        "This value is what Retell AI will use for webhook delivery."
+    )
+
+    h2(doc, "9.3  Network Isolation")
+    para(doc,
+        "In production, database and Redis ports must not be exposed to the public internet. "
+        "The Docker Compose network provides container-level isolation by default, but host-level "
+        "firewall rules add an additional layer of defence."
+    )
+    h3(doc, "Recommended Firewall Rules (ufw)")
+    code(doc,
+        "# Allow SSH (adjust port if non-standard)\n"
+        "ufw allow 22/tcp\n"
+        "\n"
+        "# Allow HTTPS (Nginx terminates TLS)\n"
+        "ufw allow 443/tcp\n"
+        "\n"
+        "# Allow HTTP only to redirect to HTTPS\n"
+        "ufw allow 80/tcp\n"
+        "\n"
+        "# Block all other inbound traffic\n"
+        "ufw default deny incoming\n"
+        "ufw default allow outgoing\n"
+        "ufw enable\n"
+        "\n"
+        "# Verify: port 5432 (postgres) and 6379 (redis) must NOT appear in:\n"
+        "ufw status verbose"
+    )
+    h3(doc, "Docker Compose Port Binding")
+    para(doc,
+        "In production, the postgres and redis services in docker-compose.yml should bind "
+        "to the loopback interface only, preventing exposure on the public network interface:"
+    )
+    code(doc,
+        "# docker-compose.yml — production port binding\n"
+        "services:\n"
+        "  postgres:\n"
+        "    ports:\n"
+        "      - \"127.0.0.1:5432:5432\"   # loopback only — not 0.0.0.0\n"
+        "\n"
+        "  redis:\n"
+        "    ports:\n"
+        "      - \"127.0.0.1:6379:6379\"   # loopback only\n"
+        "\n"
+        "  api:\n"
+        "    ports:\n"
+        "      - \"127.0.0.1:8000:8000\"   # Nginx proxies from 443 → 127.0.0.1:8000"
+    )
+
+    h2(doc, "9.4  Database Security")
+    h3(doc, "Password Strength")
+    para(doc,
+        "The default POSTGRES_PASSWORD of 'password' must be replaced with a cryptographically "
+        "random value before any production deployment. Generate a secure password with:"
+    )
+    code(doc,
+        "# Generate a 32-character random password\n"
+        "python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+    )
+    h3(doc, "Role Principle of Least Privilege")
+    para(doc,
+        "The application connects to PostgreSQL using memories_role, which has no DELETE, DROP, "
+        "TRUNCATE, or schema-modification privileges. Verify the grants are correctly applied "
+        "after migrations:"
+    )
+    code(doc,
+        "-- Verify memories_role has no destructive privileges\n"
+        "SELECT grantee, table_name, privilege_type\n"
+        "FROM   information_schema.role_table_grants\n"
+        "WHERE  grantee = 'memories_role'\n"
+        "  AND  table_schema = 'agent_operations'\n"
+        "ORDER BY table_name, privilege_type;\n"
+        "\n"
+        "-- Expected: only SELECT, INSERT, UPDATE appear — never DELETE"
+    )
+    h3(doc, "Connection Encryption")
+    para(doc,
+        "Enable SSL on the PostgreSQL server and require encrypted connections from the "
+        "application by appending ?ssl=require to DATABASE_URL in production:"
+    )
+    code(doc,
+        "DATABASE_URL=postgresql+asyncpg://memories_role:pass@db-host:5432/voice_agent?ssl=require"
+    )
+    h3(doc, "pg_hba.conf Hardening")
+    para(doc,
+        "Restrict which hosts can connect to PostgreSQL by editing pg_hba.conf on the database "
+        "server. Only the application server IP address should be permitted; 0.0.0.0/0 must not "
+        "appear in any production pg_hba.conf entry."
+    )
+    code(doc,
+        "# pg_hba.conf — production example\n"
+        "# TYPE  DATABASE     USER           ADDRESS          METHOD\n"
+        "local   all          postgres                        peer\n"
+        "host    voice_agent  memories_role  10.0.1.5/32      scram-sha-256\n"
+        "host    voice_agent  memories_role  10.0.1.6/32      scram-sha-256"
+    )
+
+    h2(doc, "9.5  Redis Security")
+    para(doc,
+        "The default Redis configuration has no authentication. In production, require a "
+        "password and bind Redis to the loopback interface."
+    )
+    h3(doc, "Enabling Redis Authentication")
+    code(doc,
+        "# redis.conf — add or uncomment:\n"
+        "requirepass your-strong-redis-password\n"
+        "bind 127.0.0.1\n"
+        "protected-mode yes"
+    )
+    para(doc,
+        "Update REDIS_URL in .env to include the password:"
+    )
+    code(doc,
+        "REDIS_URL=redis://:your-strong-redis-password@localhost:6379/0"
+    )
+    h3(doc, "Redis in Docker Compose")
+    code(doc,
+        "# docker-compose.yml — pass redis.conf to the container\n"
+        "  redis:\n"
+        "    image: redis:7-alpine\n"
+        "    command: redis-server /usr/local/etc/redis/redis.conf\n"
+        "    volumes:\n"
+        "      - ./redis.conf:/usr/local/etc/redis/redis.conf\n"
+        "      - redisdata:/data"
+    )
+
+    h2(doc, "9.6  Webhook Security")
+    para(doc,
+        "Webhook signature verification is already implemented and enforced on every inbound "
+        "request. The following additional controls should be applied in production."
+    )
+    h3(doc, "Secret Rotation Procedure")
+    num(doc, "Generate a new webhook secret in the Retell AI dashboard.")
+    num(doc, "Update RETELL_WEBHOOK_SECRET in .env on all application servers simultaneously.")
+    num(doc, "Restart the API containers: docker compose restart api")
+    num(doc, "Verify the new secret is active by monitoring /webhook for HTTP 403 errors — there should be none after the restart.")
+    num(doc, "Revoke the old secret in the Retell AI dashboard.")
+
+    h3(doc, "IP Allowlisting")
+    para(doc,
+        "Retell AI publishes the set of IP addresses from which webhooks are delivered. "
+        "Configure Nginx or the host firewall to accept POST /webhook requests only from "
+        "those IP ranges, dropping all other POST requests to that path before they reach "
+        "the application. Consult the Retell AI documentation for the current IP list."
+    )
+
+    h2(doc, "9.7  API Security")
+    h3(doc, "Rate Limiting")
+    para(doc,
+        "The FastAPI webhook receiver does not currently implement inbound rate limiting. "
+        "In production, configure Nginx to limit request rates to the /webhook endpoint "
+        "to prevent abuse:"
+    )
+    code(doc,
+        "# nginx.conf — rate limiting for /webhook\n"
+        "http {\n"
+        "    limit_req_zone $binary_remote_addr zone=webhook:10m rate=60r/m;\n"
+        "\n"
+        "    server {\n"
+        "        location /webhook {\n"
+        "            limit_req zone=webhook burst=20 nodelay;\n"
+        "            proxy_pass http://127.0.0.1:8000;\n"
+        "        }\n"
+        "    }\n"
+        "}"
+    )
+    h3(doc, "CORS Configuration")
+    para(doc,
+        "The dashboard API currently allows all origins in development. In production, "
+        "restrict CORS to the dashboard domain only by setting the allow_origins list "
+        "in the FastAPI CORS middleware to the exact production dashboard URL:"
+    )
+    code(doc,
+        "# app/webhook_receiver/main.py — production CORS\n"
+        "from fastapi.middleware.cors import CORSMiddleware\n"
+        "\n"
+        "app.add_middleware(\n"
+        "    CORSMiddleware,\n"
+        "    allow_origins=[\"https://dashboard.yourdomain.com\"],\n"
+        "    allow_methods=[\"GET\", \"POST\", \"PATCH\"],\n"
+        "    allow_headers=[\"Content-Type\", \"Authorization\"],\n"
+        ")"
+    )
+    h3(doc, "n8n Webhook Secret")
+    para(doc,
+        "The N8N_WEBHOOK_SECRET environment variable is used to authenticate POST requests "
+        "sent from the post-call analysis worker to n8n. Replace the default value "
+        "'changeme' with a strong random secret and configure the matching value in the "
+        "n8n webhook trigger node's Header Auth credential."
+    )
+
+    h2(doc, "9.8  Docker Image Security")
+    h3(doc, "Non-Root User")
+    para(doc,
+        "Both Dockerfiles should run the application as a non-root user. Add the following "
+        "to Dockerfile.api and Dockerfile.worker before the CMD instruction:"
+    )
+    code(doc,
+        "# Dockerfile.api / Dockerfile.worker — non-root execution\n"
+        "RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser\n"
+        "USER appuser"
+    )
+    h3(doc, "Dependency Pinning")
+    para(doc,
+        "Pin all Python dependencies to exact versions in requirements.txt to prevent "
+        "supply-chain attacks from malicious package updates. Generate a fully pinned "
+        "lockfile with:"
+    )
+    code(doc,
+        "pip install pip-tools\n"
+        "pip-compile requirements.in --generate-hashes --output-file requirements.txt"
+    )
+    h3(doc, "Image Scanning")
+    para(doc,
+        "Scan Docker images for known CVEs before deploying to production. "
+        "Trivy is an open-source scanner that integrates with Docker:"
+    )
+    code(doc,
+        "# Install Trivy\n"
+        "brew install aquasecurity/trivy/trivy   # macOS\n"
+        "# See trivy.dev for Linux install instructions\n"
+        "\n"
+        "# Scan the API image\n"
+        "trivy image voice-outbound-agent-api:latest\n"
+        "\n"
+        "# Fail the build if HIGH or CRITICAL CVEs are found\n"
+        "trivy image --exit-code 1 --severity HIGH,CRITICAL voice-outbound-agent-api:latest"
+    )
+    h3(doc, "Read-Only Filesystem")
+    para(doc,
+        "Where possible, run containers with a read-only root filesystem and mount only "
+        "the directories that require write access:"
+    )
+    code(doc,
+        "# docker-compose.yml — read-only filesystem for the API container\n"
+        "  api:\n"
+        "    read_only: true\n"
+        "    tmpfs:\n"
+        "      - /tmp              # allow temporary file writes\n"
+        "    volumes:\n"
+        "      - ./logs:/app/logs  # mount writable log directory"
+    )
+
+    h2(doc, "9.9  Security Hardening Checklist")
+    para(doc,
+        "Complete the following checklist before exposing the system to real customer data:"
+    )
+    tbl(doc,
+        ["Area", "Control", "Status"],
+        [
+            ["Secrets", ".env not committed to git (verify with git check-ignore)", "☐"],
+            ["Secrets", "All placeholder values replaced with real credentials", "☐"],
+            ["Secrets", "Production secrets stored in a secrets manager (not plaintext files)", "☐"],
+            ["TLS", "Nginx configured with TLS 1.2+ and a valid certificate", "☐"],
+            ["TLS", "HTTP → HTTPS redirect in place (port 80 redirects to 443)", "☐"],
+            ["TLS", "WEBHOOK_BASE_URL uses https:// scheme", "☐"],
+            ["Network", "PostgreSQL port 5432 bound to loopback (127.0.0.1) only", "☐"],
+            ["Network", "Redis port 6379 bound to loopback (127.0.0.1) only", "☐"],
+            ["Network", "Host firewall allows only ports 22, 80, 443 inbound", "☐"],
+            ["Database", "POSTGRES_PASSWORD is a strong random value", "☐"],
+            ["Database", "memories_role verified — no DELETE/DROP privileges", "☐"],
+            ["Database", "DATABASE_URL includes ?ssl=require", "☐"],
+            ["Redis", "Redis requirepass set with a strong password", "☐"],
+            ["Redis", "REDIS_URL includes the Redis password", "☐"],
+            ["Webhooks", "RETELL_WEBHOOK_SECRET is a strong value from the Retell dashboard", "☐"],
+            ["Webhooks", "N8N_WEBHOOK_SECRET replaced (not 'changeme')", "☐"],
+            ["API", "CORS allow_origins restricted to production dashboard URL", "☐"],
+            ["API", "Nginx rate limiting applied to /webhook endpoint", "☐"],
+            ["Docker", "API and worker containers run as non-root user", "☐"],
+            ["Docker", "Docker images scanned for CVEs — no HIGH/CRITICAL unresolved", "☐"],
+            ["n8n", "N8N_BASIC_AUTH_PASSWORD replaced (not 'changeme')", "☐"],
+            ["n8n", "n8n UI not publicly reachable — access via VPN or SSH tunnel only", "☐"],
         ]
     )
 
