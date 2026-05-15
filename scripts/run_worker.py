@@ -12,7 +12,12 @@ logging.basicConfig(
 
 
 async def main() -> None:
-    config = DialerConfig(retell_api_key=os.environ["RETELL_API_KEY"])
+    config = DialerConfig(
+        livekit_url=os.environ["LIVEKIT_URL"],
+        livekit_api_key=os.environ["LIVEKIT_API_KEY"],
+        livekit_api_secret=os.environ["LIVEKIT_API_SECRET"],
+        livekit_sip_trunk_id=os.environ["LIVEKIT_SIP_TRUNK_ID"],
+    )
     worker = DialerWorker(config)
     await worker.run()
 
