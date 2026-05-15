@@ -56,6 +56,14 @@ async def test_create_room_raises_dialer_error_on_failure(client, mock_lk_api):
 
 
 @pytest.mark.asyncio
+async def test_create_sip_participant_raises_dialer_error_on_failure(client, mock_lk_api):
+    mock_lk_api.sip.create_sip_participant.side_effect = Exception("sip trunk unreachable")
+    with pytest.raises(DialerError) as exc_info:
+        await client.create_sip_participant("call-abc", "+12025550101")
+    assert exc_info.value.retriable is True
+
+
+@pytest.mark.asyncio
 async def test_close_calls_aclose(client, mock_lk_api):
     await client.close()
     mock_lk_api.aclose.assert_called_once()
