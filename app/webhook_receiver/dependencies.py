@@ -2,24 +2,22 @@
 import logging
 
 from fastapi import Header, HTTPException, Request
+from livekit.api.webhook import WebhookEvent
 
 from app.core.settings import settings
-from app.webhook_receiver.signature_verifier import verify_retell_signature
+from app.webhook_receiver.signature_verifier import make_webhook_receiver, verify_livekit_webhook
 
 logger = logging.getLogger(__name__)
 
+_receiver = make_webhook_receiver(
+    api_key=settings.LIVEKIT_API_KEY,
+    api_secret=settings.LIVEKIT_API_SECRET,
+)
 
-async def verified_webhook_body(
+
+async def verified_livekit_event(
     request: Request,
-    x_retell_signature: str = Header(...),
-) -> bytes:
+    authorization: str = Header(...),
+) -> WebhookEvent:
     raw_body = await request.body()
-
-    if not verify_retell_signature(raw_body, x_retell_signature, settings.RETELL_WEBHOOK_SECRET):
-        logger.warning(
-            "Webhook signature verification failed",
-            extra={"remote": request.client.host if request.client else "unknown"},
-        )
-        raise HTTPException(status_code=403, detail="Invalid signature")
-
-    return raw_body
+    return verify_livekit_webhook(raw_body, authorization, _receiver)
