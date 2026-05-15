@@ -6,7 +6,6 @@ from app.dialing_worker.errors import (
     PhoneValidationError,
 )
 from app.dialing_worker.phone_utils import is_e164, normalize_to_e164
-from app.dialing_worker.retell_client import RetellClient
 from app.dialing_worker.timezone_utils import (
     get_local_time,
     is_within_calling_hours,
@@ -19,7 +18,6 @@ __all__ = [
     "DialerError",
     "DialingWorkerError",
     "PhoneValidationError",
-    "RetellClient",
     "get_local_time",
     "is_e164",
     "is_within_calling_hours",
