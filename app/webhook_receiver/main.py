@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
     await app.state.redis.aclose()
 
 
-app = FastAPI(title="Retell Webhook Receiver", lifespan=lifespan)
+app = FastAPI(title="Voice Agent Webhook Receiver", lifespan=lifespan)
 app.include_router(router)
 app.include_router(api_router)
 app.include_router(ws_router)

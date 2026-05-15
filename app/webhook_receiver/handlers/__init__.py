@@ -1,4 +1,3 @@
-# app/webhook_receiver/handlers/__init__.py
-from . import call_started, call_ended, call_analyzed, transcript_updated
+from . import room_started, participant_joined, room_finished
 
-__all__ = ["call_started", "call_ended", "call_analyzed", "transcript_updated"]
+__all__ = ["room_started", "participant_joined", "room_finished"]
