@@ -17,6 +17,7 @@ def _enqueue_sync(redis_url: str, call_id: str) -> None:
         q.enqueue(
             POST_CALL_ANALYSIS_JOB,
             call_id=call_id,
+            job_timeout=-1,
             retry=Retry(max=3, interval=[60, 120, 300]),
         )
     finally:

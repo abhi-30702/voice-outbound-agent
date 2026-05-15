@@ -14,9 +14,12 @@ async function getCampaigns() {
 export default async function CampaignsPage() {
   const campaigns = await getCampaigns()
   return (
-    <>
-      <h1 className="text-2xl font-bold mb-4">Campaigns</h1>
+    <div className="px-8 py-8">
+      <div className="mb-7">
+        <h1 className="text-2xl font-bold text-slate-900">Campaigns</h1>
+        <p className="text-sm text-slate-500 mt-1">Manage outbound calling campaigns and view lead pipeline</p>
+      </div>
       <CampaignTable initialCampaigns={campaigns} />
-    </>
+    </div>
   )
 }
